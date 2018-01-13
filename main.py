@@ -20,7 +20,7 @@ from metrics import calc_metrics, get_metrics
 
 
 def get_kwargs(kwargs):
-    parser = argparse.ArgumentParser(description='-f TRAIN_FILE -t TEST_FILE -o OUTPUT_FILE -e EMBEDS_FILE [-l LOGGER_FILE] [--swear-words SWEAR_FILE] [--wrong-words WRONG_WORDS_FILE] [--warm-start FALSE] [--pickle-embeds FALSE]')
+    parser = argparse.ArgumentParser(description='-f TRAIN_FILE -t TEST_FILE -o OUTPUT_FILE -e EMBEDS_FILE [-l LOGGER_FILE] [--swear-words SWEAR_FILE] [--wrong-words WRONG_WORDS_FILE] [--warm-start FALSE] [--format-embeds FALSE]')
     parser.add_argument('-f', '--train', dest='train', action='store', help='/path/to/trian_file', type=str)
     parser.add_argument('-t', '--test', dest='test', action='store', help='/path/to/test_file', type=str)
     parser.add_argument('-o', '--output', dest='output', action='store', help='/path/to/output_file', type=str)
@@ -66,8 +66,8 @@ def main(*kargs, **kwargs):
 
     # ====Load additional data====
     logger.info('Loading additional data...')
-    swear_words = read_swear_words(swear_words_fname)
-    wrong_words_dict = read_wrong_words(wrong_words_fname)
+    swear_words = load_data(swear_words_fname, func=lambda x: set(x.T[0]), header=None)
+    wrong_words_dict = load_data(wrong_words_fname, func=lambda x: {val[0] : val[1] for val in x})
 
     tokinizer = RegexpTokenizer(r'\w+')
     regexps = [re.compile("([a-zA-Z]+)([0-9]+)"), re.compile("([0-9]+)([a-zA-Z]+)")]

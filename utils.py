@@ -15,34 +15,13 @@ except ImportError:
 
 
 def load_data(fname, **kwargs):
+    func = kwargs.get('func', None)
+    if func is not None:
+        del kwargs['func']
     df = pd.read_csv(fname, **kwargs)
+    if func is not None:
+        return func(df.values)
     return df
-
-
-def read_swear_words(fname, add_words=['wanker', 'suck', 'idiot']):
-    swear_words = set(add_words)
-    if fname is None:
-        return swear_words
-    with open(fname) as f:
-        text = f.read()
-        text = set(text.rstrip().split(','))
-        swear_words.update(text)
-    return swear_words
-
-
-def read_wrong_words(fname):
-    wrong_word_dict = {}
-    if fname is None:
-        return wrong_word_dict
-    with open(fname) as f:
-        for line in f:
-            line = line.rstrip()
-            line = re.sub(' +', ' ', line)
-            line = line.split()
-            if len(line) < 2:
-                continue
-            wrong_word_dict[line[0]] = ' '.join(line[1:])
-    return wrong_word_dict
 
 
 class Embeds(object):

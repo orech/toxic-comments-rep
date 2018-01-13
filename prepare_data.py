@@ -64,8 +64,8 @@ def combine_swear_words(text, swear_words):
     return result
 
 
-def clean_text(df, tokinizer, wrong_word_dict, swear_words, regexps, autocorrect=True, swear_combine=True):
-    df.fillna("unknown", inplace=True)
+def clean_text(df, tokinizer, wrong_words_dict, swear_words, regexps, autocorrect=True, swear_combine=True):
+    df.fillna("__NA__", inplace=True)
     texts = df.tolist()
     result = []
     for text in tqdm(texts):
@@ -74,9 +74,11 @@ def clean_text(df, tokinizer, wrong_word_dict, swear_words, regexps, autocorrect
         tokens = [substitute_repeats(token, 3) for token in tokens]
         if swear_combine:
             tokens = combine_swear_words(tokens, swear_words)
+        text = ' '.join(tokens)
         if autocorrect:
-            tokens = [wrong_word_dict.get(token, token) for token in tokens]
-        result.append(' '.join(tokens))
+            for wrong, right in wrong_words_dict.items():
+                text = text.replace(wrong, right)
+        result.append(text)
     return result
 
 
