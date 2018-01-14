@@ -12,7 +12,7 @@ from sklearn.externals import joblib
 from nltk.tokenize import RegexpTokenizer
 from tqdm import tqdm
 
-from utils import load_data, read_swear_words, read_wrong_words, Embeds, Logger
+from utils import load_data, Embeds, Logger
 from prepare_data import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, split_data, get_bow
 from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features
 from train import train, continue_train
