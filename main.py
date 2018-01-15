@@ -155,7 +155,7 @@ def main(*kargs, **kwargs):
     metrics_lr = {}
     y_tfidf = []
     for i, label in enumerate(target_labels):
-        model = NbSvmClassifier(C=4.0, solver='sag', max_iter=1000)
+        model = LogisticRegression(C=4.0, solver='sag', max_iter=1000, n_jobs=16)
         model.fit(train_tfidf, y_train_nn[:, i])
         y_tfidf.append(model.predict_proba(val_tfidf)[:,1])
         test_df['tfidf_{}'.format(label)] = model.predict_proba(test_tfidf)[:,1]

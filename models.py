@@ -1,3 +1,4 @@
+import numpy as np
 from scipy import sparse
 
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -84,36 +85,3 @@ def save_predictions(df, predictions, target_labels, additional_name=None):
         if additional_name is not None:
             label = '{}_{}'.format(additional_name, label)
         df[label] = predictions[:, i]
-
-# From https://www.kaggle.com/jhoward/nb-svm-strong-linear-baseline-eda-0-052-lb
-class NbSvmClassifier(BaseEstimator, ClassifierMixin):
-    def __init__(self, C=1.0, dual=False, n_jobs=1, solver='sag', max_iter=100):
-        self.C = C
-        self.dual = dual
-        self.n_jobs = n_jobs
-        self.solver = solver
-        self.max_iter = max_iter
-
-    def predict(self, x):
-        # Verify that model has been fit
-        check_is_fitted(self, ['_r', '_clf'])
-        return self._clf.predict(x.multiply(self._r))
-
-    def predict_proba(self, x):
-        # Verify that model has been fit
-        check_is_fitted(self, ['_r', '_clf'])
-        return self._clf.predict_proba(x.multiply(self._r))
-
-    def fit(self, x, y):
-        # Check that X and y have correct shape
-        y = y.values
-        x, y = check_X_y(x, y, accept_sparse=True)
-
-        def pr(x, y_i, y):
-            p = x[y==y_i].sum(0)
-            return (p+1) / ((y==y_i).sum()+1)
-
-        self._r = sparse.csr_matrix(np.log(pr(x,1,y) / pr(x,0,y)))
-        x_nb = x.multiply(self._r)
-        self._clf = LogisticRegression(C=self.C, dual=self.dual, max_iter=self.max_iter, solver=self.solver, n_jobs=self.n_jobs).fit(x_nb, y)
-        return self
