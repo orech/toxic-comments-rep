@@ -82,15 +82,34 @@ def clean_text(df, tokinizer, wrong_words_dict, swear_words, regexps, autocorrec
     return result
 
 
-def convert_text2seq(train_texts, test_texts, max_words, max_seq_len, lower=True, char_level=False):
+def uniq_words_in_text(text):
+    return ' '.join(list(set(text.split())))
+
+
+def convert_text2seq(train_texts, test_texts, max_words, max_seq_len, lower=True, char_level=False, uniq=False):
     tokenizer = Tokenizer(num_words=max_words, lower=lower, char_level=char_level)
-    tokenizer.fit_on_texts(train_texts + test_texts)
+    texts = train_texts + test_texts
+    if uniq:
+        texts = [uniq_words_in_text(text) for text in texts]
+    tokenizer.fit_on_texts(texts)
     word_seq_train = tokenizer.texts_to_sequences(train_texts)
     word_seq_test = tokenizer.texts_to_sequences(test_texts)
     word_index = tokenizer.word_index
     word_seq_train = list(sequence.pad_sequences(word_seq_train, maxlen=max_seq_len))
     word_seq_test = list(sequence.pad_sequences(word_seq_test, maxlen=max_seq_len))
     return word_seq_train, word_seq_test, word_index
+
+
+def delete_unknown_words(seq, embedding_sums, max_len):
+    seq = [idx for idx in seq if embedding_sums[idx] != 0]
+    seq = list(np.zeros(max_len - len(seq))) + seq
+    return np.array(seq)
+
+
+def clean_seq(seqs, embedding_matrix, max_len):
+    embedding_sums = np.sum(embedding_matrix, axis=1)
+    seqs = [delete_unknown_words(seq, embedding_sums, max_len) for seq in seqs]
+    return seqs
 
 
 def get_embedding_matrix(embed_dim, embeds, max_words, word_index):

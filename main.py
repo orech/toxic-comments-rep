@@ -1,4 +1,5 @@
 import re
+import os.path
 import argparse
 import logging
 from six import iteritems
@@ -8,15 +9,16 @@ from catboost import CatBoostClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.externals import joblib
+from keras.models import load_model
 
 from nltk.tokenize import RegexpTokenizer
 from tqdm import tqdm
 
 from utils import load_data, Embeds, Logger
-from prepare_data import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, split_data, get_bow
+from prepare_data import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow
 from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features
 from train import train, continue_train
-from metrics import calc_metrics, get_metrics
+from metrics import calc_metrics, get_metrics, print_metrics
 
 
 def get_kwargs(kwargs):
@@ -29,6 +31,7 @@ def get_kwargs(kwargs):
     parser.add_argument('--swear-words', dest='swear_words', action='store', help='/path/to/swear_words_file', type=str, default=None)
     parser.add_argument('--wrong-words', dest='wrong_words', action='store', help='/path/to/wrong_words_file', type=str, default=None)
     parser.add_argument('--warm-start', dest='warm_start', action='store', help='true | false', type=bool, default=False)
+    parser.add_argument('--model-warm-start', dest='model_warm_start', action='store', help='CNN | LSTM | CONCAT | LOGREG | CATBOOST, warm start for several models available', type=str, default=[], nargs='+')
     parser.add_argument('--format-embeds', dest='format_embeds', action='store', help='file | json | pickle | binary', type=str, default='file')
     for key, value in iteritems(parser.parse_args().__dict__):
         kwargs[key] = value
@@ -44,6 +47,7 @@ def main(*kargs, **kwargs):
     swear_words_fname = kwargs['swear_words']
     wrong_words_fname = kwargs['wrong_words']
     warm_start = kwargs['warm_start']
+    model_warm_start = [model.lower() for model in kwargs['model_warm_start']]
     format_embeds = kwargs['format_embeds']
 
     cnn_model_file = 'data/cnn.h5'
@@ -100,49 +104,70 @@ def main(*kargs, **kwargs):
     logger.info('Converting texts to sequences...')
     max_words = 100000
 
-    train_df['comment_seq'], test_df['comment_seq'], word_index = convert_text2seq(train_df['comment_text_clear'].tolist(), test_df['comment_text_clear'].tolist(), max_words, max_seq_len, lower=True, char_level=False)
+    train_df['comment_seq'], test_df['comment_seq'], word_index = convert_text2seq(train_df['comment_text_clear'].tolist(), test_df['comment_text_clear'].tolist(), max_words, max_seq_len, lower=True, char_level=False, uniq=True)
     logger.debug('Dictionary size = {}'.format(len(word_index)))
+
     logger.info('Preparing embedding matrix...')
     embedding_matrix, words_not_found = get_embedding_matrix(embed_dim, embeds, max_words, word_index)
     logger.debug('Embedding matrix shape = {}'.format(np.shape(embedding_matrix)))
     logger.debug('Number of null word embeddings = {}'.format(np.sum(np.sum(embedding_matrix, axis=1) == 0)))
+
+    logger.info('Deleting unknown words from seq...')
+    train_df['comment_seq'] = clean_seq(train_df['comment_seq'], embedding_matrix, max_seq_len)
+    test_df['comment_seq'] = clean_seq(test_df['comment_seq'], embedding_matrix, max_seq_len)
 
     # ====Train/test split data====
     x = np.array(train_df['comment_seq'].tolist())
     y = np.array(train_df[target_labels].values)
     x_train_nn, x_test_nn, y_train_nn, y_test_nn, train_idxs, test_idxs = split_data(x, y, test_size=0.2, shuffle=True, random_state=42)
     test_df_seq = np.array(test_df['comment_seq'].tolist())
+    logger.debug('X shape = {}'.format(np.shape(x_train_nn)))
 
     # ====Train models====
 
     # CNN
     logger.info("training CNN ...")
-    cnn = get_cnn(embedding_matrix, num_classes, embed_dim, max_seq_len, num_filters=64, l2_weight_decay=0.0001, dropout_val=0.5, dense_dim=32, add_sigmoid=True)
-    cnn_hist = train(x_train_nn, y_train_nn, cnn, batch_size=256, num_epochs=100, learning_rate=0.005, early_stopping_delta=0.0001, early_stopping_epochs=3, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=2, logger=logger)
+    if 'cnn' in model_warm_start and os.path.exists(cnn_model_file):
+        logger.info('CNN warm starting...')
+        cnn = load_model(cnn_model_file)
+        cnn_hist = None
+    else:
+        cnn = get_cnn(embedding_matrix, num_classes, embed_dim, max_seq_len, num_filters=64, l2_weight_decay=0.0001, dropout_val=0.5, dense_dim=32, add_sigmoid=True)
+        cnn_hist = train(x_train_nn, y_train_nn, cnn, batch_size=256, num_epochs=100, learning_rate=0.001, early_stopping_delta=0.0001, early_stopping_epochs=3, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=2, logger=logger)
     y_cnn = cnn.predict(x_test_nn)
     save_predictions(test_df, cnn.predict(test_df_seq), target_labels, 'cnn')
     metrics_cnn = get_metrics(y_test_nn, y_cnn, target_labels, hist=cnn_hist, plot=False)
-    logger.debug('CNN metrics:\n{}'.format(metrics_cnn))
+    logger.debug('CNN metrics:\n{}'.format(print_metrics(metrics_cnn)))
     cnn.save(cnn_model_file)
 
     # LSTM
     logger.info("training LSTM ...")
-    lstm = get_lstm(embedding_matrix, num_classes, embed_dim, max_seq_len, l2_weight_decay=0.0001, lstm_dim=50, dropout_val=0.3, dense_dim=32, add_sigmoid=True)
-    lstm_hist = train(x_train_nn, y_train_nn, lstm, batch_size=256, num_epochs=100, learning_rate=0.005, early_stopping_delta=0.0001, early_stopping_epochs=3, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=2, logger=logger)
+    if 'lstm' in model_warm_start and os.path.exists(lstm_model_file):
+        logger.info('LSTM warm starting...')
+        lstm = load_model(lstm_model_file)
+        lstm_hist = None
+    else:
+        lstm = get_lstm(embedding_matrix, num_classes, embed_dim, max_seq_len, l2_weight_decay=0.0001, lstm_dim=50, dropout_val=0.3, dense_dim=32, add_sigmoid=True)
+        lstm_hist = train(x_train_nn, y_train_nn, lstm, batch_size=256, num_epochs=100, learning_rate=0.001, early_stopping_delta=0.0001, early_stopping_epochs=3, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=2, logger=logger)
     y_lstm = lstm.predict(x_test_nn)
     save_predictions(test_df, lstm.predict(test_df_seq), target_labels, 'lstm')
     metrics_lstm = get_metrics(y_test_nn, y_lstm, target_labels, hist=lstm_hist, plot=False)
-    logger.debug('LSTM metrics:\n{}'.format(metrics_lstm))
+    logger.debug('LSTM metrics:\n{}'.format(print_metrics(metrics_lstm)))
     lstm.save(lstm_model_file)
 
     # CONCAT
     logger.info("training Concat NN (LSTM + CNN) ...")
-    concat = get_concat_model(embedding_matrix, num_classes, embed_dim, max_seq_len, num_filters=64, l2_weight_decay=0.0001, lstm_dim=50, dropout_val=0.5, dense_dim=32, add_sigmoid=True)
-    concat_hist = train([x_train_nn, x_train_nn], y_train_nn, concat, batch_size=256, num_epochs=100, learning_rate=0.005, early_stopping_delta=0.0001, early_stopping_epochs=4, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=3, logger=logger)
+    if 'concat' in model_warm_start and os.path.exists(concat_model_file):
+        logger.info('Concat NN warm starting...')
+        concat = load_model(concat_model_file)
+        concat_hist = None
+    else:
+        concat = get_concat_model(embedding_matrix, num_classes, embed_dim, max_seq_len, num_filters=64, l2_weight_decay=0.0001, lstm_dim=50, dropout_val=0.5, dense_dim=32, add_sigmoid=True)
+        concat_hist = train([x_train_nn, x_train_nn], y_train_nn, concat, batch_size=256, num_epochs=100, learning_rate=0.002, early_stopping_delta=0.0001, early_stopping_epochs=4, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=3, logger=logger)
     y_concat = concat.predict([x_test_nn, x_test_nn])
     save_predictions(test_df, concat.predict([test_df_seq, test_df_seq]), target_labels, 'concat')
     metrics_concat = get_metrics(y_test_nn, y_concat, target_labels, hist=concat_hist, plot=False)
-    logger.debug('Concat_NN metrics:\n{}'.format(metrics_concat))
+    logger.debug('Concat_NN metrics:\n{}'.format(print_metrics(metrics_concat)))
     concat.save(concat_model_file)
 
     # TFIDF + LogReg
@@ -162,7 +187,7 @@ def main(*kargs, **kwargs):
         metrics_lr[label] = calc_metrics(y_test_nn[:, i], y_tfidf[-1])
         models_lr.append(model)
         joblib.dump(model, lr_model_file.format(label))
-    metrics_lr['Avg logloss'] = np.mean([metric[0] for label, metric in metrics_lr.items()])
+    metrics_lr['Avg logloss'] = np.mean([metric['Logloss'] for label, metric in metrics_lr.items()])
     logger.debug('LogReg(TFIDF) metrics:\n{}'.format(metrics_lr))
 
     # Bow for catboost
@@ -206,7 +231,7 @@ def main(*kargs, **kwargs):
         metrics_cb[label] = calc_metrics(y_val_cb[:, i], y_hat_cb[:, 1])
         models_cb.append(model)
         joblib.dump(model, meta_catboost_model_file.format(label))
-    metrics_cb['Avg logloss'] = np.mean([metric[0] for label,metric in metrics_cb.items()])
+    metrics_cb['Avg logloss'] = np.mean([metric['Logloss'] for label,metric in metrics_cb.items()])
     logger.debug('CatBoost metrics:\n{}'.format(metrics_cb))
 
     # ====Predict====
