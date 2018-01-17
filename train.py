@@ -82,15 +82,16 @@ def continue_train(x_train, y_train, model, batch_size, num_epochs, learning_rat
 
 
 class Params(object):
-    def __init__(self, config):
+    def __init__(self, config=None):
         self._params = self._common_init()
         config_params = self._load_from_file(config)
         self._update_params(config_params)
 
     def _load_from_file(self, fname):
+        if fname is None:
+            return {}
         with open(fname) as f:
             return json.loads(f.read())
-        return {}
 
     def _common_init(self):
         common_params = {
