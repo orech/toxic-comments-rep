@@ -17,7 +17,7 @@ from tqdm import tqdm
 from utils import load_data, Embeds, Logger
 from prepare_data import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow
 from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features
-from train import train, continue_train
+from train import train, continue_train, Params
 from metrics import calc_metrics, get_metrics, print_metrics
 
 
@@ -33,6 +33,7 @@ def get_kwargs(kwargs):
     parser.add_argument('--warm-start', dest='warm_start', action='store', help='true | false', type=bool, default=False)
     parser.add_argument('--model-warm-start', dest='model_warm_start', action='store', help='CNN | LSTM | CONCAT | LOGREG | CATBOOST, warm start for several models available', type=str, default=[], nargs='+')
     parser.add_argument('--format-embeds', dest='format_embeds', action='store', help='file | json | pickle | binary', type=str, default='file')
+    parser.add_argument('--config', dest='config', action='store', help='/path/to/config.json', type=str, default=None)
     for key, value in iteritems(parser.parse_args().__dict__):
         kwargs[key] = value
 
@@ -49,6 +50,7 @@ def main(*kargs, **kwargs):
     warm_start = kwargs['warm_start']
     model_warm_start = [model.lower() for model in kwargs['model_warm_start']]
     format_embeds = kwargs['format_embeds']
+    config = kwargs['config']
 
     cnn_model_file = 'data/cnn.h5'
     lstm_model_file = 'data/lstm.h5'
@@ -125,15 +127,37 @@ def main(*kargs, **kwargs):
 
     # ====Train models====
 
+    # Load params to the models
+    params = Params(config)
+
     # CNN
     logger.info("training CNN ...")
-    if 'cnn' in model_warm_start and os.path.exists(cnn_model_file):
+    if params.get('cnn').get('warm_start') and os.path.exists(params.get('cnn').get('model_file')):
         logger.info('CNN warm starting...')
-        cnn = load_model(cnn_model_file)
+        cnn = load_model(params.get('cnn').get('model_file'))
         cnn_hist = None
     else:
-        cnn = get_cnn(embedding_matrix, num_classes, embed_dim, max_seq_len, num_filters=64, l2_weight_decay=0.0001, dropout_val=0.5, dense_dim=32, add_sigmoid=True)
-        cnn_hist = train(x_train_nn, y_train_nn, cnn, batch_size=256, num_epochs=100, learning_rate=0.001, early_stopping_delta=0.0001, early_stopping_epochs=3, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=2, logger=logger)
+        cnn = get_cnn(embedding_matrix,
+                    num_classes,
+                    embed_dim,
+                    max_seq_len,
+                    num_filters=params.get('cnn').get('num_filters'),
+                    l2_weight_decay=params.get('cnn').get('l2_weight_decay'),
+                    dropout_val=params.get('cnn').get('dropout_val'),
+                    dense_dim=params.get('cnn').get('dense_dim'),
+                    add_sigmoid=True)
+        cnn_hist = train(x_train_nn,
+                         y_train_nn,
+                         cnn,
+                         batch_size=params.get('cnn').get('batch_size'),
+                         num_epochs=params.get('cnn').get('num_epochs'),
+                         learning_rate=params.get('cnn').get('learning_rate'),
+                         early_stopping_delta=params.get('cnn').get('early_stopping_delta'),
+                         early_stopping_epochs=params.get('cnn').get('early_stopping_epochs'),
+                         use_lr_stratagy=params.get('cnn').get('use_lr_stratagy'),
+                         lr_drop_koef=params.get('cnn').get('lr_drop_koef'),
+                         epochs_to_drop=params.get('cnn').get('epochs_to_drop'),
+                         logger=logger)
     y_cnn = cnn.predict(x_test_nn)
     save_predictions(test_df, cnn.predict(test_df_seq), target_labels, 'cnn')
     metrics_cnn = get_metrics(y_test_nn, y_cnn, target_labels, hist=cnn_hist, plot=False)
@@ -142,13 +166,32 @@ def main(*kargs, **kwargs):
 
     # LSTM
     logger.info("training LSTM ...")
-    if 'lstm' in model_warm_start and os.path.exists(lstm_model_file):
+    if params.get('lstm').get('warm_start') and os.path.exists(params.get('lstm').get('model_file')):
         logger.info('LSTM warm starting...')
-        lstm = load_model(lstm_model_file)
+        lstm = load_model(params.get('lstm').get('model_file'))
         lstm_hist = None
     else:
-        lstm = get_lstm(embedding_matrix, num_classes, embed_dim, max_seq_len, l2_weight_decay=0.0001, lstm_dim=50, dropout_val=0.3, dense_dim=32, add_sigmoid=True)
-        lstm_hist = train(x_train_nn, y_train_nn, lstm, batch_size=256, num_epochs=100, learning_rate=0.001, early_stopping_delta=0.0001, early_stopping_epochs=3, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=2, logger=logger)
+        lstm = get_lstm(embedding_matrix,
+                        num_classes,
+                        embed_dim,
+                        max_seq_len,
+                        l2_weight_decay=params.get('lstm').get('l2_weight_decay'),
+                        lstm_dim=params.get('lstm').get('lstm_dim'),
+                        dropout_val=params.get('lstm').get('dropout_val'),
+                        dense_dim=params.get('lstm').get('dense_dim'),
+                        add_sigmoid=True)
+        lstm_hist = train(x_train_nn,
+                          y_train_nn,
+                          lstm,
+                          batch_size=params.get('lstm').get('batch_size'),
+                          num_epochs=params.get('lstm').get('num_epochs'),
+                          learning_rate=params.get('lstm').get('learning_rate'),
+                          early_stopping_delta=params.get('lstm').get('early_stopping_delta'),
+                          early_stopping_epochs=params.get('lstm').get('early_stopping_epochs'),
+                          use_lr_stratagy=params.get('lstm').get('use_lr_stratagy'),
+                          lr_drop_koef=params.get('lstm').get('lr_drop_koef'),
+                          epochs_to_drop=params.get('lstm').get('epochs_to_drop'),
+                          logger=logger)
     y_lstm = lstm.predict(x_test_nn)
     save_predictions(test_df, lstm.predict(test_df_seq), target_labels, 'lstm')
     metrics_lstm = get_metrics(y_test_nn, y_lstm, target_labels, hist=lstm_hist, plot=False)
@@ -157,13 +200,33 @@ def main(*kargs, **kwargs):
 
     # CONCAT
     logger.info("training Concat NN (LSTM + CNN) ...")
-    if 'concat' in model_warm_start and os.path.exists(concat_model_file):
+    if params.get('concat').get('warm_start') and os.path.exists(params.get('concat').get('model_file')):
         logger.info('Concat NN warm starting...')
-        concat = load_model(concat_model_file)
+        concat = load_model(params.get('concat').get('model_file'))
         concat_hist = None
     else:
-        concat = get_concat_model(embedding_matrix, num_classes, embed_dim, max_seq_len, num_filters=64, l2_weight_decay=0.0001, lstm_dim=50, dropout_val=0.5, dense_dim=32, add_sigmoid=True)
-        concat_hist = train([x_train_nn, x_train_nn], y_train_nn, concat, batch_size=256, num_epochs=100, learning_rate=0.002, early_stopping_delta=0.0001, early_stopping_epochs=4, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=3, logger=logger)
+        concat = get_concat_model(embedding_matrix,
+                                  num_classes,
+                                  embed_dim,
+                                  max_seq_len,
+                                  num_filters=params.get('concat').get('num_filters'),
+                                  l2_weight_decay=params.get('concat').get('l2_weight_decay'),
+                                  lstm_dim=params.get('concat').get('lstm_dim'),
+                                  dropout_val=params.get('concat').get('dropout_val'),
+                                  dense_dim=params.get('concat').get('dense_dim'),
+                                  add_sigmoid=True)
+        concat_hist = train([x_train_nn, x_train_nn],
+                            y_train_nn,
+                            concat,
+                            batch_size=params.get('concat').get('batch_size'),
+                            num_epochs=params.get('concat').get('num_epochs'),
+                            learning_rate=params.get('concat').get('learning_rate'),
+                            early_stopping_delta=params.get('concat').get('early_stopping_delta'),
+                            early_stopping_epochs=params.get('concat').get('early_stopping_epochs'),
+                            use_lr_stratagy=params.get('concat').get('use_lr_stratagy'),
+                            lr_drop_koef=params.get('concat').get('lr_drop_koef'),
+                            epochs_to_drop=params.get('concat').get('epochs_to_drop'),
+                            logger=logger)
     y_concat = concat.predict([x_test_nn, x_test_nn])
     save_predictions(test_df, concat.predict([test_df_seq, test_df_seq]), target_labels, 'concat')
     metrics_concat = get_metrics(y_test_nn, y_concat, target_labels, hist=concat_hist, plot=False)
@@ -173,8 +236,8 @@ def main(*kargs, **kwargs):
     # TFIDF + LogReg
     logger.info('training LogReg over tfidf...')
     train_tfidf, val_tfidf, test_tfidf, word_tfidf, char_tfidf = get_tfidf(train_df['comment_text_clear'].values[train_idxs],
-                                                    train_df['comment_text_clear'].values[test_idxs],
-                                                    test_df['comment_text_clear'].values)
+                                                                           train_df['comment_text_clear'].values[test_idxs],
+                                                                           test_df['comment_text_clear'].values)
 
     models_lr = []
     metrics_lr = {}
@@ -191,20 +254,21 @@ def main(*kargs, **kwargs):
     logger.debug('LogReg(TFIDF) metrics:\n{}'.format(metrics_lr))
 
     # Bow for catboost
-    top_pos_words = []
-    top_neg_words = []
-    for i in range(num_classes):
-        top_pos_words.append([])
-        top_neg_words.append([])
-        top_pos_words[-1], top_neg_words[-1] = get_most_informative_features([word_tfidf, char_tfidf], models_lr[i], n=100)
+    if params.get('catboost').get('add_bow'):
+        top_pos_words = []
+        top_neg_words = []
+        for i in range(num_classes):
+            top_pos_words.append([])
+            top_neg_words.append([])
+            top_pos_words[-1], top_neg_words[-1] = get_most_informative_features([word_tfidf, char_tfidf], models_lr[i], n=params.get('catboost').get('bow_top'))
 
-    top_pos_words = list(set(np.concatenate([[val for score, val in top] for top in top_pos_words])))
-    top_neg_words = list(set(np.concatenate([[val for score, val in top] for top in top_neg_words])))
-    top = list(set(np.concatenate([top_pos_words, top_neg_words])))
-    train_bow = get_bow(train_df['comment_text_clear'].values[train_idxs], top)
-    val_bow = get_bow(train_df['comment_text_clear'].values[test_idxs], top)
-    test_bow = get_bow(test_df['comment_text_clear'].values, top)
-    logger.debug('Count bow words = {}'.format(len(top)))
+        top_pos_words = list(set(np.concatenate([[val for score, val in top] for top in top_pos_words])))
+        top_neg_words = list(set(np.concatenate([[val for score, val in top] for top in top_neg_words])))
+        top = list(set(np.concatenate([top_pos_words, top_neg_words])))
+        train_bow = get_bow(train_df['comment_text_clear'].values[train_idxs], top)
+        val_bow = get_bow(train_df['comment_text_clear'].values[test_idxs], top)
+        test_bow = get_bow(test_df['comment_text_clear'].values, top)
+        logger.debug('Count bow words = {}'.format(len(top)))
 
     # Meta catboost
     logger.info('training catboost as metamodel...')
@@ -218,14 +282,22 @@ def main(*kargs, **kwargs):
 
     x_train_catboost = []
     y_train_catboost = y_test_nn
-    for len_f, y_hat_cnn, y_hat_lstm, y_hat_concat, y_hat_tfidf, bow in zip(text_len_features, y_cnn, y_lstm, y_concat, np.array(y_tfidf).T, val_bow):
-        x_train_catboost.append(np.concatenate([len_f, y_hat_cnn, y_hat_lstm, y_hat_concat, y_hat_tfidf, bow]))
+    features = [text_len_features, y_cnn, y_lstm, y_concat, np.array(y_tfidf).T]
+    if params.get('catboost').get('add_bow'):
+        features.append(val_bow)
+    for feature in zip(*features):
+        x_train_catboost.append(np.concatenate(feature))
 
     models_cb = []
     metrics_cb = {}
     x_train_cb, x_val_cb, y_train_cb, y_val_cb = train_test_split(x_train_catboost, y_train_catboost, test_size=0.20, random_state=42)
     for i, label in enumerate(target_labels):
-        model = CatBoostClassifier(loss_function='Logloss', iterations=1000, depth=6, rsm=1, learning_rate=0.01)
+        model = CatBoostClassifier(loss_function='Logloss',
+                                   iterations=params.get('catboost').get('iterations'),
+                                   depth=params.get('catboost').get('depth'),
+                                   rsm=params.get('catboost').get('rsm'),
+                                   learning_rate=params.get('catboost').get('learning_rate'),
+                                   device_config=params.get('catboost').get('device_config'))
         model.fit(x_train_cb, y_train_cb[:, i], plot=True, eval_set=(x_val_cb, y_val_cb[:, i]), use_best_model=True)
         y_hat_cb = model.predict_proba(x_val_cb)
         metrics_cb[label] = calc_metrics(y_val_cb[:, i], y_hat_cb[:, 1])
@@ -242,8 +314,11 @@ def main(*kargs, **kwargs):
     y_concat_test = test_df[['concat_{}'.format(label) for label in target_labels]].values
     y_tfidf_test = test_df[['tfidf_{}'.format(label) for label in target_labels]].values
     x_test_cb = []
-    for len_f, y_hat_cnn, y_hat_lstm, y_hat_concat, y_hat_tfidf, bow in tqdm(zip(text_len_features, y_cnn_test, y_lstm_test, y_concat_test, y_tfidf_test, test_bow)):
-        x_test_cb.append(np.concatenate([len_f, y_hat_cnn, y_hat_lstm, y_hat_concat, y_hat_tfidf, bow]))
+    features = [text_len_features, y_cnn_test, y_lstm_test, y_concat_test, y_tfidf_test]
+    if params.get('catboost').get('add_bow'):
+        features.append(test_bow)
+    for feature in tqdm(zip(*features)):
+        x_test_cb.append(np.concatenate(feature))
 
     for label, model in zip(target_labels, models_cb):
         pred = model.predict_proba(x_test_cb)

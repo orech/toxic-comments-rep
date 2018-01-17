@@ -1,3 +1,4 @@
+import json
 from math import pow, floor
 
 from keras import optimizers
@@ -78,3 +79,59 @@ def continue_train(x_train, y_train, model, batch_size, num_epochs, learning_rat
                      shuffle=True,
                      verbose=1)
     return hist
+
+
+class Params(object):
+    def __init__(self, config):
+        self._params = self._common_init()
+        config_params = self._load_from_file(config)
+        self._update_params(config_params)
+
+    def _load_from_file(self, fname):
+        with open(fname) as f:
+            return json.loads(f.read())
+        return {}
+
+    def _common_init(self):
+        common_params = {
+                    'warm_start': False,
+                    'model_file': None,
+                    'batch_size': 256,
+                    'num_epochs': 10,
+                    'learning_rate': 0.0001,
+                    'early_stopping_delta': 0.001,
+                    'early_stopping_epochs': 2,
+                    'use_lr_stratagy': True,
+                    'lr_drop_koef': 0.5,
+                    'epochs_to_drop': 1,
+                    'l2_weight_decay':0.0001,
+                    'dropout_val': 0.5,
+                    'dense_dim': 32}
+
+        params = {'cnn': common_params,
+                  'lstm': common_params,
+                  'concat': common_params}
+
+        params['cnn']['num_filters'] = 64
+        params['lstm']['lstm_dim'] = 50
+        params['concat']['num_filters'] = 64
+        params['concat']['lstm_dim'] = 50
+
+        params['catboost'] = {
+                    'add_bow': False,
+                    'bow_top': 100,
+                    'iterations': 1000,
+                    'depth': 6,
+                    'rsm': 1,
+                    'learning_rate': 0.01,
+                    'device_config': None}
+        return params
+
+    def _update_params(self, params):
+        if params is not None and params:
+            for key in params.keys():
+                self._params.setdefault(key, {})
+                self._params[key].update(params[key])
+
+    def get(self, key):
+        return self._params.get(key, None)
