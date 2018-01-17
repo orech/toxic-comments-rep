@@ -34,6 +34,8 @@ def get_kwargs(kwargs):
     parser.add_argument('--model-warm-start', dest='model_warm_start', action='store', help='CNN | LSTM | CONCAT | LOGREG | CATBOOST, warm start for several models available', type=str, default=[], nargs='+')
     parser.add_argument('--format-embeds', dest='format_embeds', action='store', help='file | json | pickle | binary', type=str, default='file')
     parser.add_argument('--config', dest='config', action='store', help='/path/to/config.json', type=str, default=None)
+    parser.add_argument('--train-clear', dest='train_clear', action='store', help='/path/to/save_train_clear_file', type=str, default='data/train_clear.csv')
+    parser.add_argument('--test-clear', dest='test_clear', action='store', help='/path/to/save_test_clear_file', type=str, default='data/test_clear.csv')
     for key, value in iteritems(parser.parse_args().__dict__):
         kwargs[key] = value
 
@@ -51,6 +53,8 @@ def main(*kargs, **kwargs):
     model_warm_start = [model.lower() for model in kwargs['model_warm_start']]
     format_embeds = kwargs['format_embeds']
     config = kwargs['config']
+    train_clear = kwargs['train_clear']
+    test_clear = kwargs['test_clear']
 
     cnn_model_file = 'data/cnn.h5'
     lstm_model_file = 'data/lstm.h5'
