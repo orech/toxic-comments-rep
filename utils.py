@@ -28,8 +28,8 @@ class Embeds(object):
     def __init__(self, fname, w2v_type='fasttext', format='file'):
         if format in ('json', 'pickle'):
             self.load(fname, format)
-        elif w2v_type == 'fasttext':
-            self.model = self._read_fasttext(fname)
+        elif w2v_type in ('fasttext', 'glove'):
+            self.model = self._read_word_vec_from_txt(fname, w2v_type)
         elif w2v_type == 'word2vec':
             self.model = gensim.models.KeyedVectors.load_word2vec_format(fname, binary=format=='binary')
         else:
@@ -44,21 +44,22 @@ class Embeds(object):
     def __contains__(self, key):
         return self.__getitem__[key] is not None
 
-    def _process_line(self, line):
-        line = line.rstrip().split(' ')
+    def _process_line(self, line, separator):
+        line = line.rstrip().split(separator)
         word = line[0]
         vec = line[1:]
         return word, [float(val) for val in vec]
 
-    def _read_fasttext(self, fname):
-        with open(fname) as f:
-            tech_line = f.readline()
-            dict_size, vec_size = self._process_line(tech_line)
-            print('dict_size = {}'.format(dict_size))
-            print('vec_size = {}'.format(vec_size))
+    def _read_word_vec_from_txt(self, fname, w2v_type):
+        with open(fname, 'r') as f:
+            if (w2v_type == 'fasttext'):
+                tech_line = f.readline()
+                dict_size, vec_size = self._process_line(tech_line)
+                print('dict_size = {}'.format(dict_size))
+                print('vec_size = {}'.format(vec_size))
             model = {}
             for line in tqdm(f, file=sys.stdout):
-                word, vec = self._process_line(line)
+                word, vec = self._process_line(line, ' ')
                 model[word] = vec
         return model
 
