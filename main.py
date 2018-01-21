@@ -34,8 +34,8 @@ def get_kwargs(kwargs):
     parser.add_argument('--model-warm-start', dest='model_warm_start', action='store', help='CNN | LSTM | CONCAT | LOGREG | CATBOOST, warm start for several models available', type=str, default=[], nargs='+')
     parser.add_argument('--format-embeds', dest='format_embeds', action='store', help='file | json | pickle | binary', type=str, default='file')
     parser.add_argument('--config', dest='config', action='store', help='/path/to/config.json', type=str, default=None)
-    parser.add_argument('--train-clear', dest='train_clear', action='store', help='/path/to/save_train_clear_file', type=str, default='data/train_clear.csv')
-    parser.add_argument('--test-clear', dest='test_clear', action='store', help='/path/to/save_test_clear_file', type=str, default='data/test_clear.csv')
+    parser.add_argument('--train-clean', dest='train_clean', action='store', help='/path/to/save_train_clean_file', type=str, default='data/train_clean.csv')
+    parser.add_argument('--test-clean', dest='test_clean', action='store', help='/path/to/save_test_clean_file', type=str, default='data/test_clean.csv')
     for key, value in iteritems(parser.parse_args().__dict__):
         kwargs[key] = value
 
@@ -53,8 +53,8 @@ def main(*kargs, **kwargs):
     model_warm_start = [model.lower() for model in kwargs['model_warm_start']]
     format_embeds = kwargs['format_embeds']
     config = kwargs['config']
-    train_clear = kwargs['train_clear']
-    test_clear = kwargs['test_clear']
+    train_clean = kwargs['train_clean']
+    test_clean = kwargs['test_clean']
 
     cnn_model_file = 'data/cnn.h5'
     lstm_model_file = 'data/lstm.h5'
@@ -92,17 +92,17 @@ def main(*kargs, **kwargs):
     if warm_start:
         logger.info('Use warm start...')
     else:
-        train_df['comment_text_clear'] = clean_text(train_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
-        test_df['comment_text_clear'] = clean_text(test_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
-        train_df.to_csv(train_clear, index=False)
-        test_df.to_csv(test_clear, index=False)
+        train_df['comment_text_clean'] = clean_text(train_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
+        test_df['comment_text_clean'] = clean_text(test_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
+        train_df.to_csv(train_clean, index=False)
+        test_df.to_csv(test_clean, index=False)
 
     # ====Calculate maximum seq length====
     logger.info('Calc text length...')
     train_df.fillna('unknown', inplace=True)
     test_df.fillna('unknown', inplace=True)
-    train_df['text_len'] = train_df['comment_text_clear'].apply(lambda words: len(words.split()))
-    test_df['text_len'] = test_df['comment_text_clear'].apply(lambda words: len(words.split()))
+    train_df['text_len'] = train_df['comment_text_clean'].apply(lambda words: len(words.split()))
+    test_df['text_len'] = test_df['comment_text_clean'].apply(lambda words: len(words.split()))
     max_seq_len = np.round(train_df['text_len'].mean() + 3*train_df['text_len'].std()).astype(int)
     logger.debug('Max seq length = {}'.format(max_seq_len))
 
@@ -110,7 +110,7 @@ def main(*kargs, **kwargs):
     logger.info('Converting texts to sequences...')
     max_words = 100000
 
-    train_df['comment_seq'], test_df['comment_seq'], word_index = convert_text2seq(train_df['comment_text_clear'].tolist(), test_df['comment_text_clear'].tolist(), max_words, max_seq_len, lower=True, char_level=False, uniq=True)
+    train_df['comment_seq'], test_df['comment_seq'], word_index = convert_text2seq(train_df['comment_text_clean'].tolist(), test_df['comment_text_clean'].tolist(), max_words, max_seq_len, lower=True, char_level=False, uniq=True)
     logger.debug('Dictionary size = {}'.format(len(word_index)))
 
     logger.info('Preparing embedding matrix...')
@@ -239,9 +239,9 @@ def main(*kargs, **kwargs):
 
     # TFIDF + LogReg
     logger.info('training LogReg over tfidf...')
-    train_tfidf, val_tfidf, test_tfidf, word_tfidf, char_tfidf = get_tfidf(train_df['comment_text_clear'].values[train_idxs],
-                                                                           train_df['comment_text_clear'].values[test_idxs],
-                                                                           test_df['comment_text_clear'].values)
+    train_tfidf, val_tfidf, test_tfidf, word_tfidf, char_tfidf = get_tfidf(train_df['comment_text_clean'].values[train_idxs],
+                                                                           train_df['comment_text_clean'].values[test_idxs],
+                                                                           test_df['comment_text_clean'].values)
 
     models_lr = []
     metrics_lr = {}
@@ -269,15 +269,15 @@ def main(*kargs, **kwargs):
         top_pos_words = list(set(np.concatenate([[val for score, val in top] for top in top_pos_words])))
         top_neg_words = list(set(np.concatenate([[val for score, val in top] for top in top_neg_words])))
         top = list(set(np.concatenate([top_pos_words, top_neg_words])))
-        train_bow = get_bow(train_df['comment_text_clear'].values[train_idxs], top)
-        val_bow = get_bow(train_df['comment_text_clear'].values[test_idxs], top)
-        test_bow = get_bow(test_df['comment_text_clear'].values, top)
+        train_bow = get_bow(train_df['comment_text_clean'].values[train_idxs], top)
+        val_bow = get_bow(train_df['comment_text_clean'].values[test_idxs], top)
+        test_bow = get_bow(test_df['comment_text_clean'].values, top)
         logger.debug('Count bow words = {}'.format(len(top)))
 
     # Meta catboost
     logger.info('training catboost as metamodel...')
-    train_df['text_unique_len'] = train_df['comment_text_clear'].apply(calc_text_uniq_words)
-    test_df['text_unique_len'] = test_df['comment_text_clear'].apply(calc_text_uniq_words)
+    train_df['text_unique_len'] = train_df['comment_text_clean'].apply(calc_text_uniq_words)
+    test_df['text_unique_len'] = test_df['comment_text_clean'].apply(calc_text_uniq_words)
 
     train_df['text_unique_koef'] = train_df['text_unique_len'] / train_df['text_len']
     test_df['text_unique_koef'] = test_df['text_unique_len'] / test_df['text_len']
