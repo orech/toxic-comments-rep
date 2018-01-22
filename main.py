@@ -84,8 +84,11 @@ def main(*kargs, **kwargs):
 
     # ====Load word vectors====
     logger.info('Loading embeddings...')
-    embed_dim = 300
-    embeds = Embeds(embeds_fname, 'glove', format=format_embeds)
+    embeds = Embeds(embeds_fname, 'fasttext', format=format_embeds)
+    if embeds.vec_size != 0:
+        embed_dim = embeds.vec_size
+    else:
+        embed_dim = 100
 
     # ====Clean texts====
     logger.info('Cleaning text...')
@@ -112,23 +115,25 @@ def main(*kargs, **kwargs):
 
     train_df['comment_seq'], test_df['comment_seq'], word_index = convert_text2seq(train_df['comment_text_clean'].tolist(), test_df['comment_text_clean'].tolist(), max_words, max_seq_len, lower=True, char_level=False, uniq=True)
     logger.debug('Dictionary size = {}'.format(len(word_index)))
-    print(train_df['comment_seq'])
 
-    # logger.info('Preparing embedding matrix...')
-    # embedding_matrix, words_not_found = get_embedding_matrix(embed_dim, embeds, max_words, word_index)
-    # logger.debug('Embedding matrix shape = {}'.format(np.shape(embedding_matrix)))
-    # logger.debug('Number of null word embeddings = {}'.format(np.sum(np.sum(embedding_matrix, axis=1) == 0)))
-    #
-    # logger.info('Deleting unknown words from seq...')
-    # train_df['comment_seq'] = clean_seq(train_df['comment_seq'], embedding_matrix, max_seq_len)
-    # test_df['comment_seq'] = clean_seq(test_df['comment_seq'], embedding_matrix, max_seq_len)
-    #
-    # # ====Train/test split data====
-    # x = np.array(train_df['comment_seq'].tolist())
-    # y = np.array(train_df[target_labels].values)
-    # x_train_nn, x_test_nn, y_train_nn, y_test_nn, train_idxs, test_idxs = split_data(x, y, test_size=0.2, shuffle=True, random_state=42)
-    # test_df_seq = np.array(test_df['comment_seq'].tolist())
-    # logger.debug('X shape = {}'.format(np.shape(x_train_nn)))
+    logger.info('Preparing embedding matrix...')
+    embedding_matrix, words_not_found = get_embedding_matrix(embed_dim, embeds, max_words, word_index)
+    logger.debug('Embedding matrix shape = {}'.format(np.shape(embedding_matrix)))
+    logger.debug('Number of null word embeddings = {}'.format(np.sum(np.sum(embedding_matrix, axis=1) == 0)))
+
+    logger.info('Deleting unknown words from seq...')
+    train_df['comment_seq'] = clean_seq(train_df['comment_seq'], embedding_matrix, max_seq_len)
+    test_df['comment_seq'] = clean_seq(test_df['comment_seq'], embedding_matrix, max_seq_len)
+
+    # ====Train/test split data====
+    x = np.array(train_df['comment_seq'].tolist())
+    y = np.array(train_df[target_labels].values)
+    for l in y:
+        if np.sum(l) > 0:
+            print(l)
+    x_train_nn, x_test_nn, y_train_nn, y_test_nn, train_idxs, test_idxs = split_data(x, y, test_size=0.2, shuffle=True, random_state=42)
+    test_df_seq = np.array(test_df['comment_seq'].tolist())
+    logger.debug('X shape = {}'.format(np.shape(x_train_nn)))
     #
     # # ====Train models====
     #

@@ -26,10 +26,11 @@ def load_data(fname, **kwargs):
 
 class Embeds(object):
     def __init__(self, fname, w2v_type='fasttext', format='file'):
+        self.vec_size = 0
         if format in ('json', 'pickle'):
             self.load(fname, format)
         elif w2v_type in ('fasttext', 'glove'):
-            self.model = self._read_word_vec_from_txt(fname, w2v_type)
+            self.model, self.vec_size = self._read_word_vec_from_txt(fname, w2v_type)
         elif w2v_type == 'word2vec':
             self.model = gensim.models.KeyedVectors.load_word2vec_format(fname, binary=format=='binary')
         else:
@@ -51,17 +52,18 @@ class Embeds(object):
         return word, [float(val) for val in vec]
 
     def _read_word_vec_from_txt(self, fname, w2v_type):
+        vec_size = [0]
         with open(fname, 'r') as f:
             if (w2v_type == 'fasttext'):
                 tech_line = f.readline()
-                dict_size, vec_size = self._process_line(tech_line)
+                dict_size, vec_size = self._process_line(tech_line, ' ')
                 print('dict_size = {}'.format(dict_size))
                 print('vec_size = {}'.format(vec_size))
             model = {}
             for line in tqdm(f, file=sys.stdout):
                 word, vec = self._process_line(line, ' ')
                 model[word] = vec
-        return model
+        return model, int(vec_size[0])
 
     def save(self, fname, format='json'):
         if format == 'json':
