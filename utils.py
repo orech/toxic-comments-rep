@@ -8,6 +8,12 @@ from tqdm import tqdm
 import numpy as np
 import gensim
 
+from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+
+from ggplot import *
+
 try:
     import cPickle as pickle
 except ImportError:
@@ -83,7 +89,6 @@ class Embeds(object):
                 self.model = pickle.load(f)
         return self
 
-
 class Logger(object):
     def __init__(self, logger, fname=None, format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s"):
         self.logFormatter = logging.Formatter(format)
@@ -107,3 +112,44 @@ class Logger(object):
 
     def debug(self, message):
         self.rootLogger.debug(message)
+
+
+class WordVecPlot(object):
+    def __init__(self, model):
+        self.model = model
+
+    def tsne_plot(self, subset, fname):
+        labels_init = []
+        tokens_init = []
+
+        for word, vec in self.model.items():
+            tokens_init.append(vec)
+            labels_init.append(word)
+
+        tokens = tokens_init[subset[0]: subset[1]]
+        labels = labels_init[subset[0]: subset[1]]
+
+
+        df = {}
+        pca = PCA(n_components=2)
+        new_values = pca.fit_transform(tokens)
+        df['pca-one'] = new_values[:, 0]
+        df['pca-two'] = new_values[:, 1]
+
+
+        x = []
+        y = []
+        for value in new_values:
+            x.append(value[0])
+            y.append(value[1])
+
+        fig, ax = plt.subplots(figsize=(35, 25))
+        ax.scatter(x, y)
+
+        for i in range(len(x)):
+            ax.annotate(labels[i], (x[i], y[i]), textcoords='offset points', xytext=(5,2))
+
+        fig.savefig(fname)
+        plt.close(fig)
+
+

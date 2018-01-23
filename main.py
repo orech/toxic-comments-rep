@@ -14,7 +14,7 @@ from keras.models import load_model
 from nltk.tokenize import RegexpTokenizer
 from tqdm import tqdm
 
-from utils import load_data, Embeds, Logger
+from utils import load_data, Embeds, Logger, WordVecPlot
 from prepare_data import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow
 from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features
 from train import train, continue_train, Params
@@ -27,6 +27,7 @@ def get_kwargs(kwargs):
     parser.add_argument('-t', '--test', dest='test', action='store', help='/path/to/test_file', type=str)
     parser.add_argument('-o', '--output', dest='output', action='store', help='/path/to/output_file', type=str)
     parser.add_argument('-e', '--embeds', dest='embeds', action='store', help='/path/to/embeds_file', type=str)
+    parser.add_argument('-et', '--embeds_type', dest='embeds_type', action='store', help='fasttext | glove | word2vec', type=str)
     parser.add_argument('-l', '--logger', dest='logger', action='store', help='/path/to/log_file', type=str, default=None)
     parser.add_argument('--swear-words', dest='swear_words', action='store', help='/path/to/swear_words_file', type=str, default=None)
     parser.add_argument('--wrong-words', dest='wrong_words', action='store', help='/path/to/wrong_words_file', type=str, default=None)
@@ -55,6 +56,7 @@ def main(*kargs, **kwargs):
     config = kwargs['config']
     train_clean = kwargs['train_clean']
     test_clean = kwargs['test_clean']
+    embeds_type = kwargs['embeds_type']
 
     # cnn_model_file = 'data/cnn.h5'
     # lstm_model_file = 'data/lstm.h5'
@@ -84,21 +86,26 @@ def main(*kargs, **kwargs):
 
     # ====Load word vectors====
     logger.info('Loading embeddings...')
-    embeds = Embeds(embeds_fname, 'fasttext', format=format_embeds)
+    embeds = Embeds(embeds_fname, embeds_type, format=format_embeds)
     if embeds.vec_size != 0:
         embed_dim = embeds.vec_size
     else:
         embed_dim = 100
 
     # ====Clean texts====
-    logger.info('Cleaning text...')
-    if warm_start:
-        logger.info('Use warm start...')
-    else:
-        train_df['comment_text_clean'] = clean_text(train_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
-        test_df['comment_text_clean'] = clean_text(test_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
-        train_df.to_csv(train_clean, index=False)
-        test_df.to_csv(test_clean, index=False)
+    # logger.info('Cleaning text...')
+    # if warm_start:
+    #     logger.info('Use warm start...')
+    # else:
+    #     train_df['comment_text_clean'] = clean_text(train_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
+    #     test_df['comment_text_clean'] = clean_text(test_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
+    #     train_df.to_csv(train_clean, index=False)
+    #     test_df.to_csv(test_clean, index=False)
+
+    # ====Visualize our training data====
+    # takes a subset of embedding vectors and stores the visualization into file
+    visualizer = WordVecPlot(embeds.model)
+    visualizer.tsne_plot([0, 2000], '/home/anya/toxic-comments-rep/embedding_plot.png')
 
     # ====Calculate maximum seq length====
     logger.info('Calc text length...')

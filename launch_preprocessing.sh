@@ -8,10 +8,12 @@ TRAIN_CLEAN="/home/anya/toxic-comments-rep/data/train.clean.csv"
 TEST_CLEAN="/home/anya/toxic-comments-rep/data/test.clean.csv"
 
 OUTPUT_FILE="/home/anya/toxic-comments-rep/data/results.csv"
-EMBEDS_FILE="/home/anya/toxic-comments-rep/data/wiki.en.vec.part"
+EMBEDS_FILE="/home/anya/toxic-comments-rep/data/glove.twitter.27B.100d.txt"
+# fasttext, glove or word2vec
+EMBEDS_TYPE="glove"
 
 SWEAR_FILE="/home/anya/toxic-comments-rep/data/swear_words.csv"
 WRONG_WORDS_FILE="/home/anya/toxic-comments-rep/data/correct_words.csv"
 
 
-$PY_PATH main.py --train=$TRAIN_DATA --test=$TEST_DATA --output $OUTPUT_FILE --embeds $EMBEDS_FILE --swear-words=$SWEAR_FILE --wrong-words=$WRONG_WORDS_FILE --train-clean=$TRAIN_CLEAN --test-clean=$TEST_CLEAN
+$PY_PATH main.py --train=$TRAIN_DATA --test=$TEST_DATA --output $OUTPUT_FILE --embeds=$EMBEDS_FILE --embeds_type=$EMBEDS_TYPE --swear-words=$SWEAR_FILE --wrong-words=$WRONG_WORDS_FILE --train-clean=$TRAIN_CLEAN --test-clean=$TEST_CLEAN
