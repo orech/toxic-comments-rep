@@ -15,5 +15,7 @@ EMBEDS_TYPE="glove"
 SWEAR_FILE="/home/anya/toxic-comments-rep/data/swear_words.csv"
 WRONG_WORDS_FILE="/home/anya/toxic-comments-rep/data/correct_words.csv"
 
+CONFIG="config.json"
 
-$PY_PATH main.py --train=$TRAIN_DATA --test=$TEST_DATA --output $OUTPUT_FILE --embeds=$EMBEDS_FILE --embeds_type=$EMBEDS_TYPE --swear-words=$SWEAR_FILE --wrong-words=$WRONG_WORDS_FILE --train-clean=$TRAIN_CLEAN --test-clean=$TEST_CLEAN
+
+$PY_PATH main.py --train=$TRAIN_DATA --test=$TEST_DATA --output $OUTPUT_FILE --embeds=$EMBEDS_FILE --embeds_type=$EMBEDS_TYPE --swear-words=$SWEAR_FILE --wrong-words=$WRONG_WORDS_FILE --train-clean=$TRAIN_CLEAN --test-clean=$TEST_CLEAN --config=$CONFIG

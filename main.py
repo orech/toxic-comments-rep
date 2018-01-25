@@ -59,7 +59,7 @@ def main(*kargs, **kwargs):
     embeds_type = kwargs['embeds_type']
 
     # cnn_model_file = 'data/cnn.h5'
-    # lstm_model_file = 'data/lstm.h5'
+    lstm_model_file = 'data/lstm.h5'
     # concat_model_file = 'data/concat.h5'
     # cnn_model_file = 'data/cnn.h5'
     # lr_model_file = 'data/{}_logreg.bin'
@@ -103,9 +103,9 @@ def main(*kargs, **kwargs):
     #     test_df.to_csv(test_clean, index=False)
 
     # ====Visualize our training data====
-    # takes a subset of embedding vectors and stores the visualization into file
-    visualizer = WordVecPlot(embeds.model)
-    visualizer.tsne_plot([0, 2000], '/home/anya/toxic-comments-rep/embedding_plot.png')
+    # # takes a subset of embedding vectors and stores the visualization into file
+    # visualizer = WordVecPlot(embeds.model)
+    # visualizer.tsne_plot([0, 2000], '/home/anya/toxic-comments-rep/embedding_plot.png')
 
     # ====Calculate maximum seq length====
     logger.info('Calc text length...')
@@ -135,17 +135,15 @@ def main(*kargs, **kwargs):
     # ====Train/test split data====
     x = np.array(train_df['comment_seq'].tolist())
     y = np.array(train_df[target_labels].values)
-    for l in y:
-        if np.sum(l) > 0:
-            print(l)
+
     x_train_nn, x_test_nn, y_train_nn, y_test_nn, train_idxs, test_idxs = split_data(x, y, test_size=0.2, shuffle=True, random_state=42)
     test_df_seq = np.array(test_df['comment_seq'].tolist())
     logger.debug('X shape = {}'.format(np.shape(x_train_nn)))
-    #
-    # # ====Train models====
-    #
-    # # Load params to the models
-    # params = Params(config)
+
+    # ====Train models====
+
+    # Load params to the models
+    params = Params(config)
     #
     # # CNN
     # logger.info("training CNN ...")
@@ -181,7 +179,7 @@ def main(*kargs, **kwargs):
     # logger.debug('CNN metrics:\n{}'.format(print_metrics(metrics_cnn)))
     # cnn.save(cnn_model_file)
     #
-    # # LSTM
+    # LSTM
     # logger.info("training LSTM ...")
     # if params.get('lstm').get('warm_start') and os.path.exists(params.get('lstm').get('model_file')):
     #     logger.info('LSTM warm starting...')
@@ -209,11 +207,22 @@ def main(*kargs, **kwargs):
     #                       lr_drop_koef=params.get('lstm').get('lr_drop_koef'),
     #                       epochs_to_drop=params.get('lstm').get('epochs_to_drop'),
     #                       logger=logger)
-    # y_lstm = lstm.predict(x_test_nn)
-    # save_predictions(test_df, lstm.predict(test_df_seq), target_labels, 'lstm')
-    # metrics_lstm = get_metrics(y_test_nn, y_lstm, target_labels, hist=lstm_hist, plot=False)
-    # logger.debug('LSTM metrics:\n{}'.format(print_metrics(metrics_lstm)))
-    # lstm.save(lstm_model_file)
+    lstm = load_model(lstm_model_file)
+    y_lstm = lstm.predict(x_test_nn)
+    logger.info('Predicted')
+    lstm_hist = None
+    test_predictions = lstm.predict(test_df_seq)
+    logger.info('predicted test')
+    save_predictions(test_df, test_predictions, target_labels)
+    #metrics_lstm = get_metrics(y_test_nn, y_lstm, target_labels, hist=lstm_hist, plot=False)
+    #logger.debug('LSTM metrics:\n{}'.format(print_metrics(metrics_lstm)))
+    #lstm.save(lstm_model_file)
+
+    print(test_df)
+
+    # for label in target_labels:
+    #     test_df[label] = np.array(list(y_lstm))[:, 1]
+
     #
     # # CONCAT
     # logger.info("training Concat NN (LSTM + CNN) ...")
@@ -323,7 +332,7 @@ def main(*kargs, **kwargs):
     # metrics_cb['Avg logloss'] = np.mean([metric['Logloss'] for label,metric in metrics_cb.items()])
     # logger.debug('CatBoost metrics:\n{}'.format(metrics_cb))
     #
-    # # ====Predict====
+    # ====Predict====
     # logger.info('Applying models...')
     # text_len_features = test_df[['text_len', 'text_unique_len', 'text_unique_koef']].values
     # y_cnn_test = test_df[['cnn_{}'.format(label) for label in target_labels]].values
@@ -340,10 +349,10 @@ def main(*kargs, **kwargs):
     # for label, model in zip(target_labels, models_cb):
     #     pred = model.predict_proba(x_test_cb)
     #     test_df[label] = np.array(list(pred))[:, 1]
-    #
-    # # ====Save results====
-    # logger.info('Saving results...')
-    # test_df[['id', 'toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']].to_csv(result_fname, index=False, header=True)
+
+    # ====Save results====
+    logger.info('Saving results...')
+    test_df[['id', 'toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']].to_csv(result_fname, index=False, header=True)
 
 
 if __name__=='__main__':

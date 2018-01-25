@@ -68,6 +68,7 @@ class Embeds(object):
             model = {}
             for line in tqdm(f, file=sys.stdout):
                 word, vec = self._process_line(line, ' ')
+                vec = np.asarray(vec).astype(np.float16)
                 model[word] = vec
         return model, int(vec_size[0])
 

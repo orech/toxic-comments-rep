@@ -38,7 +38,8 @@ def define_callbacks(early_stopping_delta, early_stopping_epochs, use_lr_stratag
 
 def train(x_train, y_train, model, batch_size, num_epochs, learning_rate=0.001, early_stopping_delta=0.0, early_stopping_epochs=10, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=5, logger=None):
     adam = optimizers.Adam(lr=learning_rate)
-    model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
+    rmsprop = optimizers.RMSprop(clipvalue=1, clipnorm=1)
+    model.compile(loss='binary_crossentropy', optimizer=rmsprop, metrics=['accuracy'])
     if logger is not None:
         model.summary(print_fn=lambda line: logger.debug(line))
     else:

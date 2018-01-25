@@ -5,7 +5,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from keras import regularizers
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge
-from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D
+from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input
+
+from keras.layers import Bidirectional, Dropout, CuDNNGRU
+from keras.models import Model
+from keras.optimizers import RMSprop
 
 
 def get_cnn(embedding_matrix, num_classes, embed_dim, max_seq_len, num_filters=64, l2_weight_decay=0.0001, dropout_val=0.5, dense_dim=32, add_sigmoid=True):
@@ -33,6 +37,18 @@ def get_lstm(embedding_matrix, num_classes, embed_dim, max_seq_len, l2_weight_de
     model.add(Dense(dense_dim, activation='relu', kernel_regularizer=regularizers.l2(l2_weight_decay)))
     if add_sigmoid:
         model.add(Dense(num_classes, activation="sigmoid"))
+    return model
+
+
+def get_model(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(embedding_layer)
+    x = Dropout(dropout_rate)(x)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=False))(x)
+    x = Dense(dense_size, activation="relu")(x)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    model = Model(inputs=input_layer, outputs=output_layer)
     return model
 
 

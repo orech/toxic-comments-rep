@@ -1,11 +1,5 @@
 {
-    "cnn": {
-        "num_epochs": 1
-    },
     "lstm": {
-        "num_epochs": 1
-    },
-    "concat": {
-        "num_epochs": 1
+        "num_epochs": 2
     }
 }
