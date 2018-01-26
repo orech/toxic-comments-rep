@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from utils import load_data, Embeds, Logger, WordVecPlot
 from prepare_data import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow
-from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features
+from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features, get_2BiGRU
 from train import train, continue_train, Params
 from metrics import calc_metrics, get_metrics, print_metrics
 
@@ -59,7 +59,8 @@ def main(*kargs, **kwargs):
     embeds_type = kwargs['embeds_type']
 
     # cnn_model_file = 'data/cnn.h5'
-    lstm_model_file = 'data/lstm.h5'
+    lstm_model_file = 'data/lstm_model.h5'
+    gru_model_file = 'data/gru_model.h5'
     # concat_model_file = 'data/concat.h5'
     # cnn_model_file = 'data/cnn.h5'
     # lr_model_file = 'data/{}_logreg.bin'
@@ -76,14 +77,6 @@ def main(*kargs, **kwargs):
     target_labels = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
     num_classes = len(target_labels)
 
-    # ====Load additional data====
-    logger.info('Loading additional data...')
-    swear_words = load_data(swear_words_fname, func=lambda x: set(x.T[0]), header=None)
-    wrong_words_dict = load_data(wrong_words_fname, func=lambda x: {val[0] : val[1] for val in x})
-
-    tokinizer = RegexpTokenizer(r'\w+')
-    regexps = [re.compile("([a-zA-Z]+)([0-9]+)"), re.compile("([0-9]+)([a-zA-Z]+)")]
-
     # ====Load word vectors====
     logger.info('Loading embeddings...')
     embeds = Embeds(embeds_fname, embeds_type, format=format_embeds)
@@ -92,15 +85,6 @@ def main(*kargs, **kwargs):
     else:
         embed_dim = 100
 
-    # ====Clean texts====
-    # logger.info('Cleaning text...')
-    # if warm_start:
-    #     logger.info('Use warm start...')
-    # else:
-    #     train_df['comment_text_clean'] = clean_text(train_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
-    #     test_df['comment_text_clean'] = clean_text(test_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
-    #     train_df.to_csv(train_clean, index=False)
-    #     test_df.to_csv(test_clean, index=False)
 
     # ====Visualize our training data====
     # # takes a subset of embedding vectors and stores the visualization into file
@@ -118,7 +102,7 @@ def main(*kargs, **kwargs):
 
     # ====Prepare data to NN====
     logger.info('Converting texts to sequences...')
-    max_words = 100000
+    max_words = 150000
 
     train_df['comment_seq'], test_df['comment_seq'], word_index = convert_text2seq(train_df['comment_text_clean'].tolist(), test_df['comment_text_clean'].tolist(), max_words, max_seq_len, lower=True, char_level=False, uniq=True)
     logger.debug('Dictionary size = {}'.format(len(word_index)))
@@ -136,7 +120,7 @@ def main(*kargs, **kwargs):
     x = np.array(train_df['comment_seq'].tolist())
     y = np.array(train_df[target_labels].values)
 
-    x_train_nn, x_test_nn, y_train_nn, y_test_nn, train_idxs, test_idxs = split_data(x, y, test_size=0.2, shuffle=True, random_state=42)
+    x_train_nn, x_test_nn, y_train_nn, y_test_nn, train_idxs, test_idxs = split_data(x, y, test_size=0.1, shuffle=True, random_state=42)
     test_df_seq = np.array(test_df['comment_seq'].tolist())
     logger.debug('X shape = {}'.format(np.shape(x_train_nn)))
 
@@ -207,21 +191,47 @@ def main(*kargs, **kwargs):
     #                       lr_drop_koef=params.get('lstm').get('lr_drop_koef'),
     #                       epochs_to_drop=params.get('lstm').get('epochs_to_drop'),
     #                       logger=logger)
-    lstm = load_model(lstm_model_file)
-    y_lstm = lstm.predict(x_test_nn)
-    logger.info('Predicted')
-    lstm_hist = None
-    test_predictions = lstm.predict(test_df_seq)
-    logger.info('predicted test')
+    # y_lstm = lstm.predict(x_test_nn)
+    # test_predictions = lstm.predict(test_df_seq)
+    # logger.info('Saving predictions...')
+    # save_predictions(test_df, test_predictions, target_labels)
+    # logger.info('Evaluation...')
+    # metrics_lstm = get_metrics(y_test_nn, y_lstm, target_labels, hist=lstm_hist, plot=False)
+    # logger.debug('LSTM metrics:\n{}'.format(print_metrics(metrics_lstm)))
+    # lstm.save(lstm_model_file)
+
+    # BiGRU
+    logger.info("training GRU ...")
+    if params.get('gru').get('warm_start') and os.path.exists(params.get('gru').get('model_file')):
+        logger.info('GRU warm starting...')
+        gru_net = load_model(params.get('gru').get('model_file'))
+        gru_hist = None
+    else:
+        gru_net = get_2BiGRU(embedding_matrix=embedding_matrix,
+                        num_classes=num_classes,
+                        sequence_length=max_seq_len,
+                        recurrent_units=64,
+                        dense_size=32)
+        gru_hist = train(x_train_nn,
+                          y_train_nn,
+                          gru_net,
+                          batch_size=params.get('gru').get('batch_size'),
+                          num_epochs=params.get('gru').get('num_epochs'),
+                          learning_rate=params.get('gru').get('learning_rate'),
+                          early_stopping_delta=params.get('gru').get('early_stopping_delta'),
+                          early_stopping_epochs=params.get('gru').get('early_stopping_epochs'),
+                          use_lr_stratagy=params.get('gru').get('use_lr_stratagy'),
+                          lr_drop_koef=params.get('gru').get('lr_drop_koef'),
+                          epochs_to_drop=params.get('gru').get('epochs_to_drop'),
+                          logger=logger)
+    y_gru = gru_net.predict(x_test_nn)
+    test_predictions = gru_net.predict(test_df_seq)
+    logger.info('Saving predictions...')
     save_predictions(test_df, test_predictions, target_labels)
-    #metrics_lstm = get_metrics(y_test_nn, y_lstm, target_labels, hist=lstm_hist, plot=False)
-    #logger.debug('LSTM metrics:\n{}'.format(print_metrics(metrics_lstm)))
-    #lstm.save(lstm_model_file)
-
-    print(test_df)
-
-    # for label in target_labels:
-    #     test_df[label] = np.array(list(y_lstm))[:, 1]
+    logger.info('Evaluation...')
+    metrics_gru = get_metrics(y_test_nn, y_gru, target_labels, hist=gru_hist, plot=False)
+    logger.debug('GRU metrics:\n{}'.format(print_metrics(metrics_gru)))
+    gru_net.save(gru_model_file)
 
     #
     # # CONCAT

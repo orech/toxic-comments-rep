@@ -40,7 +40,7 @@ def get_lstm(embedding_matrix, num_classes, embed_dim, max_seq_len, l2_weight_de
     return model
 
 
-def get_model(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
+def get_2BiGRU(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(embedding_layer)

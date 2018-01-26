@@ -51,26 +51,47 @@ class Embeds(object):
     def __contains__(self, key):
         return self.__getitem__[key] is not None
 
-    def _process_line(self, line, separator):
-        line = line.rstrip().split(separator)
-        word = line[0]
-        vec = line[1:]
-        return word, [float(val) for val in vec]
+    # def _process_line(self, line, separator):
+    #     line = line.rstrip().split(separator)
+    #     word = line[0]
+    #     vec = line[1:]
+    #     return word, [float(val) for val in vec]
 
     def _read_word_vec_from_txt(self, fname, w2v_type):
-        vec_size = [0]
+        # vec_size = [0]
+        # with open(fname, 'r') as f:
+        #     if (w2v_type == 'fasttext'):
+        #         tech_line = f.readline()
+        #         dict_size, vec_size = self._process_line(tech_line, ' ')
+        #         print('dict_size = {}'.format(dict_size))
+        #         print('vec_size = {}'.format(vec_size))
+        #     model = {}
+        #     for line in tqdm(f, file=sys.stdout):
+        #         word, vec = self._process_line(line, ' ')
+        #         vec = np.asarray(vec).astype(np.float16)
+        #         model[word] = vec
+        # return model, int(vec_size[0])
+        embedding_word_index = {}
+        embedding_list = []
+
         with open(fname, 'r') as f:
+            vec_size = [0]
             if (w2v_type == 'fasttext'):
                 tech_line = f.readline()
                 dict_size, vec_size = self._process_line(tech_line, ' ')
                 print('dict_size = {}'.format(dict_size))
                 print('vec_size = {}'.format(vec_size))
-            model = {}
-            for line in tqdm(f, file=sys.stdout):
-                word, vec = self._process_line(line, ' ')
-                vec = np.asarray(vec).astype(np.float16)
-                model[word] = vec
-        return model, int(vec_size[0])
+            for row in tqdm.tqdm(f.read().split("\n")[1:-1]):
+                data = row.split(" ")
+                word = data[0]
+                embedding = np.array([float(num) for num in data[1:-1]])
+                embedding = embedding.astype(np.float16)
+                embedding_list.append(embedding)
+                embedding_word_index[word] = len(embedding_word_index)
+
+        embedding_list = np.array(embedding_list)
+
+        return embedding_list, embedding_word_index, vec_size
 
     def save(self, fname, format='json'):
         if format == 'json':

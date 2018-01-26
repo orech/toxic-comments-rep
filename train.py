@@ -112,7 +112,8 @@ class Params(object):
 
         params = {'cnn': common_params,
                   'lstm': common_params,
-                  'concat': common_params}
+                  'concat': common_params,
+                  'gru': common_params}
 
         params['cnn']['num_filters'] = 64
         params['lstm']['lstm_dim'] = 50
