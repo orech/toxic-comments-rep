@@ -19,8 +19,8 @@ try:
 except ImportError:
     import pickle
 
-from utils import load_data, Embeds, Logger, WordVecPlot
-from prepare_data import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids
+from embed_utils import load_data, Embeds, Logger, WordVecPlot
+from data_utils import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids
 from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features, get_2BiGRU
 from train import train, continue_train, Params
 from metrics import calc_metrics, get_metrics, print_metrics
@@ -116,7 +116,7 @@ def main(*kargs, **kwargs):
 
 
     # ====Convert word tokens into sequences of word ids====
-    logger.info('Converting tokens to ids...')
+    logger.info('Converting words to word ids...')
     id_to_word = dict((id, word) for word, id in word_dict.items())
     train_df['comment_seq'] = convert_tokens_to_ids(tokenized_sentences=train_df['comment_tokens'].tolist(),
                                                     words_list=id_to_word,

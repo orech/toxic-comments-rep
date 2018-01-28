@@ -14,8 +14,8 @@ from keras.models import load_model
 from nltk.tokenize import RegexpTokenizer
 from tqdm import tqdm
 
-from utils import load_data, Embeds, Logger, WordVecPlot
-from prepare_data import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow
+from embed_utils import load_data, Embeds, Logger, WordVecPlot
+from data_utils import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow
 
 NAN_WORD = "_NAN_"
 

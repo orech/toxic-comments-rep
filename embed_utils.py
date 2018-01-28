@@ -67,7 +67,7 @@ class Embeds(object):
             word = values[0]
             try:
                 coefs = np.asarray(values[1:], dtype='float16')
-                # coefs.shape = 300
+                coefs.shape = 300
             except:
                 continue
             embedding_list.append(coefs)

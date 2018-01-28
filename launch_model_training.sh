@@ -6,7 +6,7 @@ TRAIN_DATA="/home/anya/toxic-comments-rep/data/train.clean.csv"
 TEST_DATA="/home/anya/toxic-comments-rep/data/test.clean.csv"
 
 OUTPUT_FILE="/home/anya/toxic-comments-rep/data/results.csv"
-EMBEDS_FILE="/home/anya/toxic-comments-rep/data/wiki.en.vec"
+EMBEDS_FILE="/home/anya/toxic-comments-rep/data/crawl-300d-2M.vec"
 # fasttext, glove or word2vec
 EMBEDS_TYPE="fasttext"
 
