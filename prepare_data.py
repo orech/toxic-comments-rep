@@ -2,6 +2,7 @@ import re
 import random
 import numpy as np
 from tqdm import tqdm
+import nltk
 
 from keras.preprocessing import sequence
 from keras.preprocessing.text import Tokenizer
@@ -82,6 +83,23 @@ def clean_text(df, tokinizer, wrong_words_dict, swear_words, regexps, autocorrec
     return result
 
 
+def tokenize_sentences(sentences, words_dict):
+    tokenized_sentences = []
+    for sentence in tqdm(sentences):
+        if hasattr(sentence, "decode"):
+            sentence = sentence.decode("utf-8")
+        tokens = nltk.tokenize.word_tokenize(sentence)
+        result = []
+        for word in tokens:
+            word = word.lower()
+            if word not in words_dict:
+                words_dict[word] = len(words_dict)
+            word_index = words_dict[word]
+            result.append(word_index)
+        tokenized_sentences.append(result)
+    return tokenized_sentences, words_dict
+
+
 def uniq_words_in_text(text):
     return ' '.join(list(set(text.split())))
 
@@ -153,3 +171,23 @@ def get_bow(texts, words):
             except UnicodeDecodeError:
                 pass
     return result
+
+
+def convert_tokens_to_ids(tokenized_sentences, words_list, embedding_word_dict, sentences_length):
+    words_train = []
+
+    for sentence in tokenized_sentences:
+        current_words = []
+        for word_index in sentence:
+            word = words_list[word_index]
+            word_id = embedding_word_dict.get(word, len(embedding_word_dict) - 2)
+            current_words.append(word_id)
+
+        if len(current_words) >= sentences_length:
+            current_words = current_words[:sentences_length]
+        else:
+            current_words += [len(embedding_word_dict) - 1] * (sentences_length - len(current_words))
+        current_words = np.asarray(current_words, dtype='int16')
+        current_words.shape = sentences_length
+        words_train.append(current_words)
+    return words_train

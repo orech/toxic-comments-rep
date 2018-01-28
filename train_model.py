@@ -14,11 +14,20 @@ from keras.models import load_model
 from nltk.tokenize import RegexpTokenizer
 from tqdm import tqdm
 
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
 from utils import load_data, Embeds, Logger, WordVecPlot
-from prepare_data import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow
+from prepare_data import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids
 from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features, get_2BiGRU
 from train import train, continue_train, Params
 from metrics import calc_metrics, get_metrics, print_metrics
+
+
+UNKNOWN_WORD = "_UNK_"
+END_WORD = "_END_"
 
 
 def get_kwargs(kwargs):
@@ -74,59 +83,64 @@ def main(*kargs, **kwargs):
     train_df = load_data(train_fname)
     test_df = load_data(test_fname)
 
+
     target_labels = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
     num_classes = len(target_labels)
+
+    # ====Prepare data to NN====
+
+    train_df['comment_tokens'], word_dict = tokenize_sentences(train_df['comment_text'].tolist(), {})
+    test_df['comment_tokens'], word_dict = tokenize_sentences(test_df['comment_text'], word_dict)
+
+    word_dict[UNKNOWN_WORD] = len(word_dict)
+
 
     # ====Load word vectors====
     logger.info('Loading embeddings...')
     embeds = Embeds(embeds_fname, embeds_type, format=format_embeds)
-    if embeds.vec_size != 0:
-        embed_dim = embeds.vec_size
-    else:
-        embed_dim = 100
+    embedding_size = len(embeds.embedding_list[0])
+    embeds.clean_embedding_list(word_dict)
+
+    embeds.embedding_index[UNKNOWN_WORD] = len(embeds.embedding_index)
+    embeds.embedding_list.append([0.] * embedding_size)
+    embeds.embedding_index[END_WORD] = len(embeds.embedding_index)
+    embeds.embedding_list.append([-1.] * embedding_size)
+
+    embedding_matrix = np.array(embeds.embedding_list)
 
 
-    # ====Visualize our training data====
+    # ====Visualize embeddings====
     # # takes a subset of embedding vectors and stores the visualization into file
     # visualizer = WordVecPlot(embeds.model)
     # visualizer.tsne_plot([0, 2000], '/home/anya/toxic-comments-rep/embedding_plot.png')
 
-    # ====Calculate maximum seq length====
-    logger.info('Calc text length...')
-    train_df.fillna('unknown', inplace=True)
-    test_df.fillna('unknown', inplace=True)
-    train_df['text_len'] = train_df['comment_text_clean'].apply(lambda words: len(words.split()))
-    test_df['text_len'] = test_df['comment_text_clean'].apply(lambda words: len(words.split()))
-    max_seq_len = np.round(train_df['text_len'].mean() + 3*train_df['text_len'].std()).astype(int)
-    logger.debug('Max seq length = {}'.format(max_seq_len))
 
-    # ====Prepare data to NN====
-    logger.info('Converting texts to sequences...')
-    max_words = 150000
+    # ====Convert word tokens into sequences of word ids====
+    logger.info('Converting tokens to ids...')
+    id_to_word = dict((id, word) for word, id in word_dict.items())
+    train_df['comment_seq'] = convert_tokens_to_ids(tokenized_sentences=train_df['comment_tokens'].tolist(),
+                                                    words_list=id_to_word,
+                                                    embedding_word_dict=embeds.embedding_index,
+                                                    sentences_length=500)
 
-    train_df['comment_seq'], test_df['comment_seq'], word_index = convert_text2seq(train_df['comment_text_clean'].tolist(), test_df['comment_text_clean'].tolist(), max_words, max_seq_len, lower=True, char_level=False, uniq=True)
-    logger.debug('Dictionary size = {}'.format(len(word_index)))
+    test_df['comment_seq'] = convert_tokens_to_ids(tokenized_sentences=test_df['comment_tokens'].tolist(),
+                                                    words_list=id_to_word,
+                                                    embedding_word_dict=embeds.embedding_index,
+                                                    sentences_length=500)
 
-    logger.info('Preparing embedding matrix...')
-    embedding_matrix, words_not_found = get_embedding_matrix(embed_dim, embeds, max_words, word_index)
-    logger.debug('Embedding matrix shape = {}'.format(np.shape(embedding_matrix)))
-    logger.debug('Number of null word embeddings = {}'.format(np.sum(np.sum(embedding_matrix, axis=1) == 0)))
-
-    logger.info('Deleting unknown words from seq...')
-    train_df['comment_seq'] = clean_seq(train_df['comment_seq'], embedding_matrix, max_seq_len)
-    test_df['comment_seq'] = clean_seq(test_df['comment_seq'], embedding_matrix, max_seq_len)
 
     # ====Train/test split data====
     x = np.array(train_df['comment_seq'].tolist())
     y = np.array(train_df[target_labels].values)
 
+
     x_train_nn, x_test_nn, y_train_nn, y_test_nn, train_idxs, test_idxs = split_data(x, y, test_size=0.1, shuffle=True, random_state=42)
     test_df_seq = np.array(test_df['comment_seq'].tolist())
     logger.debug('X shape = {}'.format(np.shape(x_train_nn)))
 
-    # ====Train models====
 
-    # Load params to the models
+
+    # ====Load params to the models
     params = Params(config)
     #
     # # CNN
@@ -200,7 +214,8 @@ def main(*kargs, **kwargs):
     # logger.debug('LSTM metrics:\n{}'.format(print_metrics(metrics_lstm)))
     # lstm.save(lstm_model_file)
 
-    # BiGRU
+    # ====Train models====
+    # ====BiGRU====
     logger.info("training GRU ...")
     if params.get('gru').get('warm_start') and os.path.exists(params.get('gru').get('model_file')):
         logger.info('GRU warm starting...')
@@ -209,9 +224,10 @@ def main(*kargs, **kwargs):
     else:
         gru_net = get_2BiGRU(embedding_matrix=embedding_matrix,
                         num_classes=num_classes,
-                        sequence_length=max_seq_len,
-                        recurrent_units=64,
-                        dense_size=32)
+                        embed_dim=300,
+                        sequence_length=params.get('gru').get('sequence_length'),
+                        recurrent_units=params.get('gru').get('gru_dim'),
+                        dense_size=params.get('gru').get('dense_dim'))
         gru_hist = train(x_train_nn,
                           y_train_nn,
                           gru_net,

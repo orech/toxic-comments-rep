@@ -32,11 +32,14 @@ def load_data(fname, **kwargs):
 
 class Embeds(object):
     def __init__(self, fname, w2v_type='fasttext', format='file'):
-        self.vec_size = 0
+        self.embedding_dim = 0
+        self.model = {}
+        self.embedding_list = []
+        self.embedding_index = {}
         if format in ('json', 'pickle'):
             self.load(fname, format)
         elif w2v_type in ('fasttext', 'glove'):
-            self.model, self.vec_size = self._read_word_vec_from_txt(fname, w2v_type)
+            self.embedding_list, self.embedding_index, self.embedding_dim = self._read_word_vec_from_txt(fname)
         elif w2v_type == 'word2vec':
             self.model = gensim.models.KeyedVectors.load_word2vec_format(fname, binary=format=='binary')
         else:
@@ -51,47 +54,28 @@ class Embeds(object):
     def __contains__(self, key):
         return self.__getitem__[key] is not None
 
-    # def _process_line(self, line, separator):
-    #     line = line.rstrip().split(separator)
-    #     word = line[0]
-    #     vec = line[1:]
-    #     return word, [float(val) for val in vec]
-
-    def _read_word_vec_from_txt(self, fname, w2v_type):
-        # vec_size = [0]
-        # with open(fname, 'r') as f:
-        #     if (w2v_type == 'fasttext'):
-        #         tech_line = f.readline()
-        #         dict_size, vec_size = self._process_line(tech_line, ' ')
-        #         print('dict_size = {}'.format(dict_size))
-        #         print('vec_size = {}'.format(vec_size))
-        #     model = {}
-        #     for line in tqdm(f, file=sys.stdout):
-        #         word, vec = self._process_line(line, ' ')
-        #         vec = np.asarray(vec).astype(np.float16)
-        #         model[word] = vec
-        # return model, int(vec_size[0])
+    def _read_word_vec_from_txt(self, fname):
         embedding_word_index = {}
         embedding_list = []
 
-        with open(fname, 'r') as f:
-            vec_size = [0]
-            if (w2v_type == 'fasttext'):
-                tech_line = f.readline()
-                dict_size, vec_size = self._process_line(tech_line, ' ')
-                print('dict_size = {}'.format(dict_size))
-                print('vec_size = {}'.format(vec_size))
-            for row in tqdm.tqdm(f.read().split("\n")[1:-1]):
-                data = row.split(" ")
-                word = data[0]
-                embedding = np.array([float(num) for num in data[1:-1]])
-                embedding = embedding.astype(np.float16)
-                embedding_list.append(embedding)
-                embedding_word_index[word] = len(embedding_word_index)
+        f = open(fname, encoding='utf8')
 
+        for index, line in enumerate(f):
+            if index == 0:
+                continue
+            values = line.split()
+            word = values[0]
+            try:
+                coefs = np.asarray(values[1:], dtype='float16')
+                # coefs.shape = 300
+            except:
+                continue
+            embedding_list.append(coefs)
+            embedding_word_index[word] = len(embedding_word_index)
+        f.close()
         embedding_list = np.array(embedding_list)
-
-        return embedding_list, embedding_word_index, vec_size
+        embedding_dim = len(embedding_list[0])
+        return embedding_list, embedding_word_index, embedding_dim
 
     def save(self, fname, format='json'):
         if format == 'json':
@@ -110,6 +94,21 @@ class Embeds(object):
             with open(fname, 'rb') as f:
                 self.model = pickle.load(f)
         return self
+
+    def clean_embedding_list(self, words_dict):
+        cleared_embedding_list = []
+        cleared_embedding_word_dict = {}
+
+        for word in words_dict:
+            if word not in self.embedding_index:
+                continue
+            word_id = self.embedding_index[word]
+            row = self.embedding_list[word_id]
+            cleared_embedding_list.append(row)
+            cleared_embedding_word_dict[word] = len(cleared_embedding_word_dict)
+
+        self.embedding_list = cleared_embedding_list
+        self.embedding_index = cleared_embedding_word_dict
 
 class Logger(object):
     def __init__(self, logger, fname=None, format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s"):
@@ -134,7 +133,6 @@ class Logger(object):
 
     def debug(self, message):
         self.rootLogger.debug(message)
-
 
 class WordVecPlot(object):
     def __init__(self, model):

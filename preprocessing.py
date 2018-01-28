@@ -17,6 +17,7 @@ from tqdm import tqdm
 from utils import load_data, Embeds, Logger, WordVecPlot
 from prepare_data import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow
 
+NAN_WORD = "_NAN_"
 
 def get_kwargs(kwargs):
     parser = argparse.ArgumentParser(description='-f TRAIN_DATA -t TEST_DATA -e EMBEDS_FILE [-l LOGGER_FILE] [--swear-words SWEAR_FILE] [--wrong-words WRONG_WORDS_FILE] [--warm-start FALSE] [--format-embeds FALSE]')
@@ -57,7 +58,12 @@ def main(*kargs, **kwargs):
     test_df = load_data(test_fname)
 
     target_labels = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
-    num_classes = len(target_labels)
+
+    # ====Fill NANs====
+    logger.info('Calculate sentences lengths...')
+    train_df.fillna(NAN_WORD, inplace=True)
+    test_df.fillna(NAN_WORD, inplace=True)
+
 
     # ====Load additional data====
     logger.info('Loading additional data...')
@@ -67,10 +73,13 @@ def main(*kargs, **kwargs):
     tokinizer = RegexpTokenizer(r'\w+')
     regexps = [re.compile("([a-zA-Z]+)([0-9]+)"), re.compile("([0-9]+)([a-zA-Z]+)")]
 
-    # ====Clean texts====
+    #====Clean texts====
     logger.info('Cleaning text...')
     train_df['comment_text_clean'] = clean_text(train_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
     test_df['comment_text_clean'] = clean_text(test_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
+
+    train_df['text_len'] = train_df['comment_text_clean'].apply(lambda words: len(words.split()))
+    test_df['text_len'] = test_df['comment_text_clean'].apply(lambda words: len(words.split()))
 
 
     # ====Save preprocessed data====

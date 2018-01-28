@@ -1,5 +1,7 @@
 {
-    "lstm": {
-        "num_epochs": 2
+    "gru": {
+        "num_epochs": 10,
+        "sequence_length": 500,
+        "gru_dim": 64
     }
 }
