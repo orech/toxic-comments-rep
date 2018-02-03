@@ -13,21 +13,24 @@ from keras.models import load_model
 
 from nltk.tokenize import RegexpTokenizer
 from tqdm import tqdm
+import pandas as pd
 
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
 
-from embed_utils import load_data, Embeds, Logger, WordVecPlot
+from embed_utils import load_data, Embeds, Logger, WordVecPlot, clear_embedding_list, read_embedding_list
 from data_utils import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids
 from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features, get_2BiGRU
-from train import train, continue_train, Params
+from train import train, continue_train, Params, _train_model, train_folds
 from metrics import calc_metrics, get_metrics, print_metrics
 
 
 UNKNOWN_WORD = "_UNK_"
 END_WORD = "_END_"
+NAN_WORD = "_NAN_"
+PROBABILITIES_NORMALIZE_COEFFICIENT = 1.4
 
 
 def get_kwargs(kwargs):
@@ -66,6 +69,7 @@ def main(*kargs, **kwargs):
     train_clean = kwargs['train_clean']
     test_clean = kwargs['test_clean']
     embeds_type = kwargs['embeds_type']
+    result_path = 'data/results/'
 
     # cnn_model_file = 'data/cnn.h5'
     lstm_model_file = 'data/lstm_model.h5'
@@ -80,63 +84,21 @@ def main(*kargs, **kwargs):
 
     # ====Load data====
     logger.info('Loading data...')
-    train_df = load_data(train_fname)
     test_df = load_data(test_fname)
+    train_x = np.load('data/train.clean.npy')
+    test_x = np.load('data/test.clean.npy')
+    embedding_matrix = np.load('data/embeds.clean.npy')
+    train_y = np.load('data/train.labels.npy')
 
 
     target_labels = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
     num_classes = len(target_labels)
 
-    # ====Prepare data to NN====
-
-    train_df['comment_tokens'], word_dict = tokenize_sentences(train_df['comment_text'].tolist(), {})
-    test_df['comment_tokens'], word_dict = tokenize_sentences(test_df['comment_text'], word_dict)
-
-    word_dict[UNKNOWN_WORD] = len(word_dict)
 
 
-    # ====Load word vectors====
-    logger.info('Loading embeddings...')
-    embeds = Embeds(embeds_fname, embeds_type, format=format_embeds)
-    embedding_size = len(embeds.embedding_list[0])
-    embeds.clean_embedding_list(word_dict)
-
-    embeds.embedding_index[UNKNOWN_WORD] = len(embeds.embedding_index)
-    embeds.embedding_list.append([0.] * embedding_size)
-    embeds.embedding_index[END_WORD] = len(embeds.embedding_index)
-    embeds.embedding_list.append([-1.] * embedding_size)
-
-    embedding_matrix = np.array(embeds.embedding_list)
-
-
-    # ====Visualize embeddings====
-    # # takes a subset of embedding vectors and stores the visualization into file
-    # visualizer = WordVecPlot(embeds.model)
-    # visualizer.tsne_plot([0, 2000], '/home/anya/toxic-comments-rep/embedding_plot.png')
-
-
-    # ====Convert word tokens into sequences of word ids====
-    logger.info('Converting words to word ids...')
-    id_to_word = dict((id, word) for word, id in word_dict.items())
-    train_df['comment_seq'] = convert_tokens_to_ids(tokenized_sentences=train_df['comment_tokens'].tolist(),
-                                                    words_list=id_to_word,
-                                                    embedding_word_dict=embeds.embedding_index,
-                                                    sentences_length=500)
-
-    test_df['comment_seq'] = convert_tokens_to_ids(tokenized_sentences=test_df['comment_tokens'].tolist(),
-                                                    words_list=id_to_word,
-                                                    embedding_word_dict=embeds.embedding_index,
-                                                    sentences_length=500)
-
-
-    # ====Train/test split data====
-    x = np.array(train_df['comment_seq'].tolist())
-    y = np.array(train_df[target_labels].values)
-
-
-    x_train_nn, x_test_nn, y_train_nn, y_test_nn, train_idxs, test_idxs = split_data(x, y, test_size=0.1, shuffle=True, random_state=42)
-    test_df_seq = np.array(test_df['comment_seq'].tolist())
-    logger.debug('X shape = {}'.format(np.shape(x_train_nn)))
+    # ==== Splitting training data====
+    # x_train_nn, x_test_nn, y_train_nn, y_test_nn, train_idxs, test_idxs = split_data(x, y, test_size=0.1, shuffle=True, random_state=42)
+    # logger.debug('X shape = {}'.format(np.shape(x_train_nn)))
 
 
 
@@ -216,38 +178,60 @@ def main(*kargs, **kwargs):
 
     # ====Train models====
     # ====BiGRU====
-    logger.info("training GRU ...")
+    logger.info("training GRUs ...")
     if params.get('gru').get('warm_start') and os.path.exists(params.get('gru').get('model_file')):
         logger.info('GRU warm starting...')
         gru_net = load_model(params.get('gru').get('model_file'))
         gru_hist = None
     else:
-        gru_net = get_2BiGRU(embedding_matrix=embedding_matrix,
-                        num_classes=num_classes,
-                        embed_dim=300,
-                        sequence_length=params.get('gru').get('sequence_length'),
-                        recurrent_units=params.get('gru').get('gru_dim'),
-                        dense_size=params.get('gru').get('dense_dim'))
-        gru_hist = train(x_train_nn,
-                          y_train_nn,
-                          gru_net,
-                          batch_size=params.get('gru').get('batch_size'),
-                          num_epochs=params.get('gru').get('num_epochs'),
-                          learning_rate=params.get('gru').get('learning_rate'),
-                          early_stopping_delta=params.get('gru').get('early_stopping_delta'),
-                          early_stopping_epochs=params.get('gru').get('early_stopping_epochs'),
-                          use_lr_stratagy=params.get('gru').get('use_lr_stratagy'),
-                          lr_drop_koef=params.get('gru').get('lr_drop_koef'),
-                          epochs_to_drop=params.get('gru').get('epochs_to_drop'),
-                          logger=logger)
-    y_gru = gru_net.predict(x_test_nn)
-    test_predictions = gru_net.predict(test_df_seq)
-    logger.info('Saving predictions...')
-    save_predictions(test_df, test_predictions, target_labels)
-    logger.info('Evaluation...')
-    metrics_gru = get_metrics(y_test_nn, y_gru, target_labels, hist=gru_hist, plot=False)
-    logger.debug('GRU metrics:\n{}'.format(print_metrics(metrics_gru)))
-    gru_net.save(gru_model_file)
+
+        get_model_func = lambda : get_2BiGRU(embedding_matrix=embedding_matrix,
+                                             num_classes=num_classes,
+                                             embed_dim=300,
+                                             sequence_length=params.get('gru').get('sequence_length'),
+                                             recurrent_units=params.get('gru').get('gru_dim'),
+                                             dense_size=params.get('gru').get('dense_dim'))
+        logger.debug('Starting to train models on folds...')
+        models = train_folds(train_x, train_y, 10, 256, get_model_func, logger=logger)
+
+        if not os.path.exists(result_path):
+            os.mkdir(result_path)
+
+        logger.debug('Predicting results...')
+        test_predicts_list = []
+        for fold_id, model in enumerate(models):
+            model_path = os.path.join(result_path, "model{0}_weights.npy".format(fold_id))
+            np.save(model_path, model.get_weights())
+
+            test_predicts_path = os.path.join(result_path, "test_predicts{0}.npy".format(fold_id))
+            test_predicts = model.predict(test_x, batch_size=256)
+            test_predicts_list.append(test_predicts)
+            np.save(test_predicts_path, test_predicts)
+
+        test_predicts = np.ones(test_predicts_list[0].shape)
+        for fold_predict in test_predicts_list:
+            test_predicts *= fold_predict
+
+        test_predicts **= (1. / len(test_predicts_list))
+        test_predicts **= PROBABILITIES_NORMALIZE_COEFFICIENT
+
+        test_ids = test_df["id"].values
+        test_ids = test_ids.reshape((len(test_ids), 1))
+
+        test_predicts = pd.DataFrame(data=test_predicts, columns=target_labels)
+        test_predicts["id"] = test_ids
+        test_predicts = test_predicts[["id"] + target_labels]
+        submit_path = os.path.join(result_path, "submit")
+        test_predicts.to_csv(submit_path, index=False)
+
+    # test_predictions = gru_net.predict(test_df_seq, batch_size=params.get('gru').get('batch_size'))
+    # logger.info('Saving predictions...')
+    # save_predictions(test_df, test_predictions, target_labels)
+    # logger.info('Evaluation...')
+    # metrics_gru = get_metrics(y_test_nn, y_gru, target_labels, hist=gru_hist, plot=False)
+    # logger.debug('GRU metrics:\n{}'.format(print_metrics(metrics_gru)))
+    # logger.info('Saving model parameters...')
+    # gru_net.save(gru_model_file)
 
     #
     # # CONCAT
@@ -377,8 +361,8 @@ def main(*kargs, **kwargs):
     #     test_df[label] = np.array(list(pred))[:, 1]
 
     # ====Save results====
-    logger.info('Saving results...')
-    test_df[['id', 'toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']].to_csv(result_fname, index=False, header=True)
+    # logger.info('Saving results...')
+    # test_df[['id', 'toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']].to_csv(result_fname, index=False, header=True)
 
 
 if __name__=='__main__':

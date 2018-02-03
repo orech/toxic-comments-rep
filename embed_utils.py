@@ -66,7 +66,7 @@ class Embeds(object):
             values = line.split()
             word = values[0]
             try:
-                coefs = np.asarray(values[1:], dtype='float16')
+                coefs = np.asarray(values[1:], dtype='float32')
                 coefs.shape = 300
             except:
                 continue
@@ -109,6 +109,44 @@ class Embeds(object):
 
         self.embedding_list = cleared_embedding_list
         self.embedding_index = cleared_embedding_word_dict
+
+
+def read_embedding_list(file_path):
+    embedding_word_dict = {}
+    embedding_list = []
+
+    f = open(file_path)
+
+    for index, line in enumerate(f):
+        if index == 0:
+            continue
+        values = line.split()
+        word = values[0]
+        try:
+            coefs = np.asarray(values[1:], dtype='float32')
+        except:
+            continue
+        embedding_list.append(coefs)
+        embedding_word_dict[word] = len(embedding_word_dict)
+    f.close()
+    embedding_list = np.array(embedding_list)
+    return embedding_list, embedding_word_dict
+
+
+def clear_embedding_list(embedding_list, embedding_word_dict, words_dict):
+    cleared_embedding_list = []
+    cleared_embedding_word_dict = {}
+
+    for word in words_dict:
+        if word not in embedding_word_dict:
+            continue
+        word_id = embedding_word_dict[word]
+        row = embedding_list[word_id]
+        cleared_embedding_list.append(row)
+        cleared_embedding_word_dict[word] = len(cleared_embedding_word_dict)
+
+    return cleared_embedding_list, cleared_embedding_word_dict
+
 
 class Logger(object):
     def __init__(self, logger, fname=None, format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s"):

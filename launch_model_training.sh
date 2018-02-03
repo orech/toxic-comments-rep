@@ -2,8 +2,8 @@
 #!/usr/bin/env bash
 PY_PATH="/home/anya/tensorflow/bin/python3"
 
-TRAIN_DATA="/home/anya/toxic-comments-rep/data/train.clean.csv"
-TEST_DATA="/home/anya/toxic-comments-rep/data/test.clean.csv"
+TRAIN_DATA="/home/anya/toxic-comments-rep/data/train.csv"
+TEST_DATA="/home/anya/toxic-comments-rep/data/test.csv"
 
 OUTPUT_FILE="/home/anya/toxic-comments-rep/data/results.csv"
 EMBEDS_FILE="/home/anya/toxic-comments-rep/data/crawl-300d-2M.vec"
