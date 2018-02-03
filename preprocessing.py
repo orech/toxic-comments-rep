@@ -20,7 +20,6 @@ from data_utils import calc_text_uniq_words, clean_text, convert_text2seq, get_e
 UNKNOWN_WORD = "_UNK_"
 END_WORD = "_END_"
 NAN_WORD = "_NAN_"
-PROBABILITIES_NORMALIZE_COEFFICIENT = 1.4
 
 def get_kwargs(kwargs):
     parser = argparse.ArgumentParser(description='-f TRAIN_DATA -t TEST_DATA -e EMBEDS_FILE [-l LOGGER_FILE] [--swear-words SWEAR_FILE] [--wrong-words WRONG_WORDS_FILE] [--warm-start FALSE] [--format-embeds FALSE]')
@@ -130,12 +129,13 @@ def main(*kargs, **kwargs):
     # ====Prepare train/test data for NN====
     x = np.array(train_token_ids)
     y = np.array(train_df[target_labels].values)
-    test_df_seq = np.array(test_token_ids)
+    x_test = np.array(test_token_ids)
 
     # ====Saving the results====
+    logger.info("Saving results...")
     np.save(train_clean, x)
     np.save(train_labels, y)
-    np.save(test_clean, test_df_seq)
+    np.save(test_clean, x_test)
     np.save(embeds_clean, embedding_matrix)
 
 

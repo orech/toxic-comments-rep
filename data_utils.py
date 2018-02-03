@@ -154,10 +154,10 @@ def split_data_idx(n, test_size=0.2, shuffle=True, random_state=0):
     return idxs[:int(train_size*n)], idxs[int(train_size*n):]
 
 
-def split_data(x, y, test_size=0.2, shuffle=True, random_state=0):
+def split_data(x, y, eval_size=0.2, shuffle=True, random_state=0):
     n = len(x)
-    train_idxs, test_idxs = split_data_idx(n, test_size, shuffle, random_state)
-    return np.array(x[train_idxs]), np.array(x[test_idxs]), y[train_idxs], y[test_idxs], train_idxs, test_idxs
+    train_idxs, eval_idxs = split_data_idx(n, eval_size, shuffle, random_state)
+    return np.array(x[train_idxs]), np.array(x[eval_idxs]), y[train_idxs], y[eval_idxs], train_idxs, eval_idxs
 
 
 def get_bow(texts, words):
@@ -187,7 +187,7 @@ def convert_tokens_to_ids(tokenized_sentences, words_list, embedding_word_dict, 
             current_words = current_words[:sentences_length]
         else:
             current_words += [len(embedding_word_dict) - 1] * (sentences_length - len(current_words))
-        current_words = np.asarray(current_words, dtype='int16')
-        current_words.shape = sentences_length
+        # current_words = np.asarray(current_words, dtype='int16')
+        # current_words.shape = sentences_length
         words_train.append(current_words)
     return words_train

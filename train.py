@@ -1,9 +1,9 @@
 import json
 from math import pow, floor
 
-from keras import optimizers
+from keras import optimizers, callbacks
 from keras.callbacks import EarlyStopping, LearningRateScheduler, Callback
-from sklearn.metrics import log_loss
+from sklearn.metrics import log_loss, roc_auc_score
 import numpy as np
 
 
@@ -53,9 +53,17 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
     model.summary()
 
   while True:
-    model.fit(train_x, train_y, batch_size=batch_size, epochs=1)
+    callbacks_list = [callbacks.TerminateOnNaN()]
+    model.fit(train_x,
+              train_y,
+              batch_size=batch_size,
+              epochs=1,
+              verbose=1,
+              shuffle=True,
+              callbacks=callbacks_list)
     y_pred = model.predict(val_x, batch_size=batch_size)
-
+    y_pred = np.float64(y_pred)
+    val_y = np.float64(val_y)
     total_loss = 0
     for j in range(6):
       loss = log_loss(val_y[:, j], y_pred[:, j])
@@ -63,7 +71,9 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
 
     total_loss /= 6.
 
-    print("Epoch {0} loss {1} best_loss {2}".format(current_epoch, total_loss, best_loss))
+    roc_auc = roc_auc_score(val_y, y_pred)
+
+    logger.debug('Epoch {0} loss {1} roc_auc {2} best_loss {3}'.format(current_epoch, total_loss, roc_auc, best_loss))
 
     current_epoch += 1
     if total_loss < best_loss or best_loss == -1:

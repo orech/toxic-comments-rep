@@ -96,144 +96,95 @@ def main(*kargs, **kwargs):
 
 
 
-    # ==== Splitting training data====
-    # x_train_nn, x_test_nn, y_train_nn, y_test_nn, train_idxs, test_idxs = split_data(x, y, test_size=0.1, shuffle=True, random_state=42)
-    # logger.debug('X shape = {}'.format(np.shape(x_train_nn)))
+    # ==== Splitting training data ====
+    x_train_nn, x_eval_nn, y_train_nn, y_eval_nn, train_idxs, eval_idxs = split_data(train_x, train_y, eval_size=0.1, shuffle=True, random_state=42)
+    logger.debug('X shape = {}'.format(np.shape(x_train_nn)))
 
 
 
-    # ====Load params to the models
+    # ============= Load params to the models =============
     params = Params(config)
+
+    # ============= BiGRU =============
+    get_model_func = lambda: get_2BiGRU(embedding_matrix=embedding_matrix,
+                                        num_classes=6,
+                                        embed_dim=300,
+                                        sequence_length=params.get('gru').get('sequence_length'),
+                                        recurrent_units=params.get('gru').get('gru_dim'),
+                                        dense_size=params.get('gru').get('dense_dim'))
+
+   # =========== Training on folds ============
+
+    # logger.debug('Starting to train models on folds...')
+    # models = train_folds(train_x, train_y, 10, 256, get_model_func, logger=logger)
     #
-    # # CNN
-    # logger.info("training CNN ...")
-    # if params.get('cnn').get('warm_start') and os.path.exists(params.get('cnn').get('model_file')):
-    #     logger.info('CNN warm starting...')
-    #     cnn = load_model(params.get('cnn').get('model_file'))
-    #     cnn_hist = None
-    # else:
-    #     cnn = get_cnn(embedding_matrix,
-    #                 num_classes,
-    #                 embed_dim,
-    #                 max_seq_len,
-    #                 num_filters=params.get('cnn').get('num_filters'),
-    #                 l2_weight_decay=params.get('cnn').get('l2_weight_decay'),
-    #                 dropout_val=params.get('cnn').get('dropout_val'),
-    #                 dense_dim=params.get('cnn').get('dense_dim'),
-    #                 add_sigmoid=True)
-    #     cnn_hist = train(x_train_nn,
-    #                      y_train_nn,
-    #                      cnn,
-    #                      batch_size=params.get('cnn').get('batch_size'),
-    #                      num_epochs=params.get('cnn').get('num_epochs'),
-    #                      learning_rate=params.get('cnn').get('learning_rate'),
-    #                      early_stopping_delta=params.get('cnn').get('early_stopping_delta'),
-    #                      early_stopping_epochs=params.get('cnn').get('early_stopping_epochs'),
-    #                      use_lr_stratagy=params.get('cnn').get('use_lr_stratagy'),
-    #                      lr_drop_koef=params.get('cnn').get('lr_drop_koef'),
-    #                      epochs_to_drop=params.get('cnn').get('epochs_to_drop'),
-    #                      logger=logger)
-    # y_cnn = cnn.predict(x_test_nn)
-    # save_predictions(test_df, cnn.predict(test_df_seq), target_labels, 'cnn')
-    # metrics_cnn = get_metrics(y_test_nn, y_cnn, target_labels, hist=cnn_hist, plot=False)
-    # logger.debug('CNN metrics:\n{}'.format(print_metrics(metrics_cnn)))
-    # cnn.save(cnn_model_file)
+    # if not os.path.exists(result_path):
+    #     os.mkdir(result_path)
     #
-    # LSTM
-    # logger.info("training LSTM ...")
-    # if params.get('lstm').get('warm_start') and os.path.exists(params.get('lstm').get('model_file')):
-    #     logger.info('LSTM warm starting...')
-    #     lstm = load_model(params.get('lstm').get('model_file'))
-    #     lstm_hist = None
-    # else:
-    #     lstm = get_lstm(embedding_matrix,
-    #                     num_classes,
-    #                     embed_dim,
-    #                     max_seq_len,
-    #                     l2_weight_decay=params.get('lstm').get('l2_weight_decay'),
-    #                     lstm_dim=params.get('lstm').get('lstm_dim'),
-    #                     dropout_val=params.get('lstm').get('dropout_val'),
-    #                     dense_dim=params.get('lstm').get('dense_dim'),
-    #                     add_sigmoid=True)
-    #     lstm_hist = train(x_train_nn,
-    #                       y_train_nn,
-    #                       lstm,
-    #                       batch_size=params.get('lstm').get('batch_size'),
-    #                       num_epochs=params.get('lstm').get('num_epochs'),
-    #                       learning_rate=params.get('lstm').get('learning_rate'),
-    #                       early_stopping_delta=params.get('lstm').get('early_stopping_delta'),
-    #                       early_stopping_epochs=params.get('lstm').get('early_stopping_epochs'),
-    #                       use_lr_stratagy=params.get('lstm').get('use_lr_stratagy'),
-    #                       lr_drop_koef=params.get('lstm').get('lr_drop_koef'),
-    #                       epochs_to_drop=params.get('lstm').get('epochs_to_drop'),
-    #                       logger=logger)
-    # y_lstm = lstm.predict(x_test_nn)
-    # test_predictions = lstm.predict(test_df_seq)
-    # logger.info('Saving predictions...')
+    # logger.debug('Predicting results...')
+    # test_predicts_list = []
+    # for fold_id, model in enumerate(models):
+    #     model_path = os.path.join(result_path, "model{0}_weights.npy".format(fold_id))
+    #     np.save(model_path, model.get_weights())
+    #
+    #     test_predicts_path = os.path.join(result_path, "test_predicts{0}.npy".format(fold_id))
+    #     test_predicts = model.predict(test_x, batch_size=256)
+    #     test_predicts_list.append(test_predicts)
+    #     np.save(test_predicts_path, test_predicts)
+    #
+    # test_predicts = np.ones(test_predicts_list[0].shape)
+    # for fold_predict in test_predicts_list:
+    #     test_predicts *= fold_predict
+    #
+    # test_predicts **= (1. / len(test_predicts_list))
+    # test_predicts **= PROBABILITIES_NORMALIZE_COEFFICIENT
+    #
+    # test_ids = test_df["id"].values
+    # test_ids = test_ids.reshape((len(test_ids), 1))
+    #
+    # test_predicts = pd.DataFrame(data=test_predicts, columns=target_labels)
+    # test_predicts["id"] = test_ids
+    # test_predicts = test_predicts[["id"] + target_labels]
+    # submit_path = os.path.join(result_path, "submit")
+    # test_predicts.to_csv(submit_path, index=False)
+
+
+    # ============ Single model training =============
+
+    logger.info('Training single GRU model...')
+    model = get_model_func()
+    model_tr = _train_model(model,
+                            batch_size=256,
+                            train_x=x_train_nn,
+                            train_y=y_train_nn,
+                            val_x=x_eval_nn,
+                            val_y=y_eval_nn,
+                            logger=logger)
+    test_predictions = model_tr.predict(test_x, batch_size=params.get('gru').get('batch_size'))
+
+    # ============== Postprocessing ===============
+
+    test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
+
+    # ============== Saving predictions ==============
+
+    logger.info('Saving predictions...')
     # save_predictions(test_df, test_predictions, target_labels)
-    # logger.info('Evaluation...')
-    # metrics_lstm = get_metrics(y_test_nn, y_lstm, target_labels, hist=lstm_hist, plot=False)
-    # logger.debug('LSTM metrics:\n{}'.format(print_metrics(metrics_lstm)))
-    # lstm.save(lstm_model_file)
+    test_ids = test_df["id"].values
+    test_ids = test_ids.reshape((len(test_ids), 1))
 
-    # ====Train models====
-    # ====BiGRU====
-    logger.info("training GRUs ...")
-    if params.get('gru').get('warm_start') and os.path.exists(params.get('gru').get('model_file')):
-        logger.info('GRU warm starting...')
-        gru_net = load_model(params.get('gru').get('model_file'))
-        gru_hist = None
-    else:
+    test_predicts = pd.DataFrame(data=test_predictions, columns=target_labels)
+    test_predicts["id"] = test_ids
+    test_predicts = test_predicts[["id"] + target_labels]
+    submit_path = os.path.join(result_path, "submit")
+    test_predicts.to_csv(submit_path, index=False)
 
-        get_model_func = lambda : get_2BiGRU(embedding_matrix=embedding_matrix,
-                                             num_classes=num_classes,
-                                             embed_dim=300,
-                                             sequence_length=params.get('gru').get('sequence_length'),
-                                             recurrent_units=params.get('gru').get('gru_dim'),
-                                             dense_size=params.get('gru').get('dense_dim'))
-        logger.debug('Starting to train models on folds...')
-        models = train_folds(train_x, train_y, 10, 256, get_model_func, logger=logger)
+    # ============== Saving trained parameters ================
 
-        if not os.path.exists(result_path):
-            os.mkdir(result_path)
+    logger.info('Saving model parameters...')
+    model_tr.save(gru_model_file)
 
-        logger.debug('Predicting results...')
-        test_predicts_list = []
-        for fold_id, model in enumerate(models):
-            model_path = os.path.join(result_path, "model{0}_weights.npy".format(fold_id))
-            np.save(model_path, model.get_weights())
 
-            test_predicts_path = os.path.join(result_path, "test_predicts{0}.npy".format(fold_id))
-            test_predicts = model.predict(test_x, batch_size=256)
-            test_predicts_list.append(test_predicts)
-            np.save(test_predicts_path, test_predicts)
-
-        test_predicts = np.ones(test_predicts_list[0].shape)
-        for fold_predict in test_predicts_list:
-            test_predicts *= fold_predict
-
-        test_predicts **= (1. / len(test_predicts_list))
-        test_predicts **= PROBABILITIES_NORMALIZE_COEFFICIENT
-
-        test_ids = test_df["id"].values
-        test_ids = test_ids.reshape((len(test_ids), 1))
-
-        test_predicts = pd.DataFrame(data=test_predicts, columns=target_labels)
-        test_predicts["id"] = test_ids
-        test_predicts = test_predicts[["id"] + target_labels]
-        submit_path = os.path.join(result_path, "submit")
-        test_predicts.to_csv(submit_path, index=False)
-
-    # test_predictions = gru_net.predict(test_df_seq, batch_size=params.get('gru').get('batch_size'))
-    # logger.info('Saving predictions...')
-    # save_predictions(test_df, test_predictions, target_labels)
-    # logger.info('Evaluation...')
-    # metrics_gru = get_metrics(y_test_nn, y_gru, target_labels, hist=gru_hist, plot=False)
-    # logger.debug('GRU metrics:\n{}'.format(print_metrics(metrics_gru)))
-    # logger.info('Saving model parameters...')
-    # gru_net.save(gru_model_file)
-
-    #
     # # CONCAT
     # logger.info("training Concat NN (LSTM + CNN) ...")
     # if params.get('concat').get('warm_start') and os.path.exists(params.get('concat').get('model_file')):

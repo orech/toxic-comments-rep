@@ -115,7 +115,7 @@ def read_embedding_list(file_path):
     embedding_word_dict = {}
     embedding_list = []
 
-    f = open(file_path)
+    f = open(file_path, encoding='utf8')
 
     for index, line in enumerate(f):
         if index == 0:
