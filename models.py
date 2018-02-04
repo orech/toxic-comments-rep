@@ -4,13 +4,12 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 from keras import regularizers
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge
-from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input
+from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D
+from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D
 
-from keras.layers import Bidirectional, Dropout, CuDNNGRU
+from keras.layers import Bidirectional, Dropout, CuDNNGRU, CuDNNLSTM, Reshape
 from keras.models import Model
-from keras.optimizers import RMSprop
-
+from keras.backend import cast
 
 def get_cnn(embedding_matrix, num_classes, embed_dim, max_seq_len, num_filters=64, l2_weight_decay=0.0001, dropout_val=0.5, dense_dim=32, add_sigmoid=True):
     model = Sequential()
@@ -49,6 +48,21 @@ def get_2BiGRU(embedding_matrix, num_classes, embed_dim, sequence_length, recurr
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
     model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+def get_BiGRU_2dConv_2dMaxPool(embedding_matrix, num_classes, sequence_length):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    drop_embedding = Dropout(0.3)(embedding_layer)
+    x = Bidirectional(CuDNNGRU(64, return_sequences=True))(drop_embedding)
+    x = Dropout(0.2)(x)
+    x = Reshape((500, 128, 1))(x)
+    x = Conv2D(filters=64, kernel_size=(3, 53), strides=(1, 1), padding='same', activation='relu', data_format='channels_last')(x)
+    x = GlobalMaxPooling2D()(x)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    drop_output = Dropout(0.3)(output_layer)
+    model = Model(inputs=input_layer, outputs=drop_output)
     return model
 
 

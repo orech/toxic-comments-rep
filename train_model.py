@@ -22,7 +22,7 @@ except ImportError:
 
 from embed_utils import load_data, Embeds, Logger, WordVecPlot, clear_embedding_list, read_embedding_list
 from data_utils import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids
-from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features, get_2BiGRU
+from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features, get_2BiGRU, get_BiGRU_2dConv_2dMaxPool
 from train import train, continue_train, Params, _train_model, train_folds
 from metrics import calc_metrics, get_metrics, print_metrics
 
@@ -79,7 +79,7 @@ def main(*kargs, **kwargs):
     # lr_model_file = 'data/{}_logreg.bin'
     # meta_catboost_model_file = 'data/{}_meta_catboost.bin'
 
-    # ====Create logger====
+    # ==== Create logger ====
     logger = Logger(logging.getLogger(), logger_fname)
 
     # ====Load data====
@@ -106,17 +106,22 @@ def main(*kargs, **kwargs):
     params = Params(config)
 
     # ============= BiGRU =============
-    get_model_func = lambda: get_2BiGRU(embedding_matrix=embedding_matrix,
-                                        num_classes=6,
-                                        embed_dim=300,
-                                        sequence_length=params.get('gru').get('sequence_length'),
-                                        recurrent_units=params.get('gru').get('gru_dim'),
-                                        dense_size=params.get('gru').get('dense_dim'))
+    # get_model_func = lambda: get_2BiGRU(embedding_matrix=embedding_matrix,
+    #                                     num_classes=6,
+    #                                     embed_dim=300,
+    #                                     sequence_length=params.get('gru').get('sequence_length'),
+    #                                     recurrent_units=params.get('gru').get('gru_dim'),
+    #                                     dense_size=params.get('gru').get('dense_dim'))
+
+    # ============= BiGRU_Conv2D_MaxPool2D ==============
+    get_model_func = lambda: get_BiGRU_2dConv_2dMaxPool(embedding_matrix=embedding_matrix,
+                                                        num_classes=6,
+                                                        sequence_length=500)
 
    # =========== Training on folds ============
 
     logger.debug('Starting model training on folds...')
-    models = train_folds(train_x, train_y, 10, 256, get_model_func, logger=logger)
+    models = train_folds(train_x, train_y, 10, 128, get_model_func, logger=logger)
 
     if not os.path.exists(result_path):
         os.mkdir(result_path)
@@ -124,11 +129,11 @@ def main(*kargs, **kwargs):
     logger.debug('Predicting results...')
     test_predicts_list = []
     for fold_id, model in enumerate(models):
-        model_path = os.path.join(result_path, "model{0}_weights.npy".format(fold_id))
+        model_path = os.path.join(result_path, "bigru_conv2d{0}_weights.npy".format(fold_id))
         np.save(model_path, model.get_weights())
 
-        test_predicts_path = os.path.join(result_path, "test_predicts{0}.npy".format(fold_id))
-        test_predictions = model.predict(test_x, batch_size=256)
+        test_predicts_path = os.path.join(result_path, "bigru_conv2d_test_predicts{0}.npy".format(fold_id))
+        test_predictions = model.predict(test_x, batch_size=128)
         test_predicts_list.append(test_predictions)
         np.save(test_predicts_path, test_predictions)
 
@@ -145,7 +150,7 @@ def main(*kargs, **kwargs):
     test_predictions = pd.DataFrame(data=test_predictions, columns=target_labels)
     test_predictions["id"] = test_ids
     test_predictions = test_predictions[["id"] + target_labels]
-    submit_path = os.path.join(result_path, "gru_model")
+    submit_path = os.path.join(result_path, "2BiGRU_Conv2D_MaxPool2D_model")
     test_predictions.to_csv(submit_path, index=False)
 
 
@@ -169,20 +174,20 @@ def main(*kargs, **kwargs):
 
     # ============== Postprocessing ===============
 
-    test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
-
-    # ============== Saving predictions ==============
-
-    logger.info('Saving predictions...')
-    # save_predictions(test_df, test_predictions, target_labels)
-    test_ids = test_df["id"].values
-    test_ids = test_ids.reshape((len(test_ids), 1))
-
-    test_predicts = pd.DataFrame(data=test_predictions, columns=target_labels)
-    test_predicts["id"] = test_ids
-    test_predicts = test_predicts[["id"] + target_labels]
-    submit_path = os.path.join(result_path, "submit")
-    test_predicts.to_csv(submit_path, index=False)
+    # test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
+    #
+    # # ============== Saving predictions ==============
+    #
+    # logger.info('Saving predictions...')
+    # # save_predictions(test_df, test_predictions, target_labels)
+    # test_ids = test_df["id"].values
+    # test_ids = test_ids.reshape((len(test_ids), 1))
+    #
+    # test_predicts = pd.DataFrame(data=test_predictions, columns=target_labels)
+    # test_predicts["id"] = test_ids
+    # test_predicts = test_predicts[["id"] + target_labels]
+    # submit_path = os.path.join(result_path, "submit")
+    # test_predicts.to_csv(submit_path, index=False)
 
 
 

@@ -55,7 +55,7 @@ def main(*kargs, **kwargs):
     embeds_fname = kwargs['embeds']
     train_labels = 'data/train.labels.npy'
 
-    # ====Create logger====
+    # ==== Create logger ====
     logger = Logger(logging.getLogger(), logger_fname)
 
     # ====Load data====
@@ -97,7 +97,7 @@ def main(*kargs, **kwargs):
     # test_df.to_csv(test_clean, index=False, header=True)
     # train_df.to_csv(train_clean, index=False, header=True)
 
-    # ====Load embedding vectors and clean it====
+    # ==== Load embedding vectors and clean it ====
     logger.info('Loading embeddings...')
     embedding_list, embedding_word_dict = read_embedding_list(embeds_fname)
     embedding_size = len(embedding_list[0])
@@ -112,7 +112,7 @@ def main(*kargs, **kwargs):
 
     embedding_matrix = np.array(embedding_list)
 
-    # ====Convert word tokens into sequences of word ids====
+    # ==== Convert word tokens into sequences of word ids  ====
     logger.info('Converting tokens to word ids...')
     id_to_word = dict((id, word) for word, id in word_dict.items())
     train_token_ids = convert_tokens_to_ids(tokenized_sentences=train_tokens,
@@ -126,12 +126,12 @@ def main(*kargs, **kwargs):
                                                     sentences_length=500)
 
 
-    # ====Prepare train/test data for NN====
+    # ==== Prepare train/test data for NN ====
     x = np.array(train_token_ids)
     y = np.array(train_df[target_labels].values)
     x_test = np.array(test_token_ids)
 
-    # ====Saving the results====
+    # ==== Saving the results ====
     logger.info("Saving results...")
     np.save(train_clean, x)
     np.save(train_labels, y)
