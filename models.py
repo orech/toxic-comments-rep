@@ -46,10 +46,12 @@ def get_2BiGRU(embedding_matrix, num_classes, embed_dim, sequence_length, recurr
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(embedding_layer)
     x = Dropout(dropout_rate)(x)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=False))(x)
-    x = Dense(dense_size, activation="relu")(x)
+    x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
     model = Model(inputs=input_layer, outputs=output_layer)
     return model
+
+
 
 
 def get_concat_model(embedding_matrix, num_classes, embed_dim, max_seq_len, num_filters=64, l2_weight_decay=0.0001, lstm_dim=50, dropout_val=0.5, dense_dim=32, add_sigmoid=True):

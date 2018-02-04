@@ -115,52 +115,57 @@ def main(*kargs, **kwargs):
 
    # =========== Training on folds ============
 
-    # logger.debug('Starting to train models on folds...')
-    # models = train_folds(train_x, train_y, 10, 256, get_model_func, logger=logger)
-    #
-    # if not os.path.exists(result_path):
-    #     os.mkdir(result_path)
-    #
-    # logger.debug('Predicting results...')
-    # test_predicts_list = []
-    # for fold_id, model in enumerate(models):
-    #     model_path = os.path.join(result_path, "model{0}_weights.npy".format(fold_id))
-    #     np.save(model_path, model.get_weights())
-    #
-    #     test_predicts_path = os.path.join(result_path, "test_predicts{0}.npy".format(fold_id))
-    #     test_predicts = model.predict(test_x, batch_size=256)
-    #     test_predicts_list.append(test_predicts)
-    #     np.save(test_predicts_path, test_predicts)
-    #
-    # test_predicts = np.ones(test_predicts_list[0].shape)
-    # for fold_predict in test_predicts_list:
-    #     test_predicts *= fold_predict
-    #
-    # test_predicts **= (1. / len(test_predicts_list))
-    # test_predicts **= PROBABILITIES_NORMALIZE_COEFFICIENT
-    #
-    # test_ids = test_df["id"].values
-    # test_ids = test_ids.reshape((len(test_ids), 1))
-    #
-    # test_predicts = pd.DataFrame(data=test_predicts, columns=target_labels)
-    # test_predicts["id"] = test_ids
-    # test_predicts = test_predicts[["id"] + target_labels]
-    # submit_path = os.path.join(result_path, "submit")
-    # test_predicts.to_csv(submit_path, index=False)
+    logger.debug('Starting model training on folds...')
+    models = train_folds(train_x, train_y, 10, 256, get_model_func, logger=logger)
+
+    if not os.path.exists(result_path):
+        os.mkdir(result_path)
+
+    logger.debug('Predicting results...')
+    test_predicts_list = []
+    for fold_id, model in enumerate(models):
+        model_path = os.path.join(result_path, "model{0}_weights.npy".format(fold_id))
+        np.save(model_path, model.get_weights())
+
+        test_predicts_path = os.path.join(result_path, "test_predicts{0}.npy".format(fold_id))
+        test_predictions = model.predict(test_x, batch_size=256)
+        test_predicts_list.append(test_predictions)
+        np.save(test_predicts_path, test_predictions)
+
+    test_predictions = np.ones(test_predicts_list[0].shape)
+    for fold_predict in test_predicts_list:
+        test_predictions *= fold_predict
+
+    test_predictions **= (1. / len(test_predicts_list))
+    test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
+
+    test_ids = test_df["id"].values
+    test_ids = test_ids.reshape((len(test_ids), 1))
+
+    test_predictions = pd.DataFrame(data=test_predictions, columns=target_labels)
+    test_predictions["id"] = test_ids
+    test_predictions = test_predictions[["id"] + target_labels]
+    submit_path = os.path.join(result_path, "gru_model")
+    test_predictions.to_csv(submit_path, index=False)
 
 
     # ============ Single model training =============
 
-    logger.info('Training single GRU model...')
-    model = get_model_func()
-    model_tr = _train_model(model,
-                            batch_size=256,
-                            train_x=x_train_nn,
-                            train_y=y_train_nn,
-                            val_x=x_eval_nn,
-                            val_y=y_eval_nn,
-                            logger=logger)
-    test_predictions = model_tr.predict(test_x, batch_size=params.get('gru').get('batch_size'))
+    # logger.info('Training single GRU model...')
+    # model = get_model_func()
+    # model_tr = _train_model(model,
+    #                         batch_size=256,
+    #                         train_x=x_train_nn,
+    #                         train_y=y_train_nn,
+    #                         val_x=x_eval_nn,
+    #                         val_y=y_eval_nn,
+    #                         logger=logger)
+    # test_predictions = model_tr.predict(test_x, batch_size=params.get('gru').get('batch_size'))
+
+    # ============== Saving trained parameters ================
+
+    # logger.info('Saving model parameters...')
+    # model_tr.save(gru_model_file)
 
     # ============== Postprocessing ===============
 
@@ -179,10 +184,6 @@ def main(*kargs, **kwargs):
     submit_path = os.path.join(result_path, "submit")
     test_predicts.to_csv(submit_path, index=False)
 
-    # ============== Saving trained parameters ================
-
-    logger.info('Saving model parameters...')
-    model_tr.save(gru_model_file)
 
 
     # # CONCAT

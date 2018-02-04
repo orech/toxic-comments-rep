@@ -1,7 +1,7 @@
 import json
 from math import pow, floor
 
-from keras import optimizers, callbacks
+from keras import optimizers, callbacks, backend, losses
 from keras.callbacks import EarlyStopping, LearningRateScheduler, Callback
 from sklearn.metrics import log_loss, roc_auc_score
 import numpy as np
@@ -37,14 +37,28 @@ def define_callbacks(early_stopping_delta, early_stopping_epochs, use_lr_stratag
         callbacks_list.append(lrate)
     return callbacks_list
 
+# ================= KL-divergence loss ======================
+def abs_kullback_leibler(y_true, y_pred):
+  y_true = backend.clip(y_true, backend.epsilon(), None)
+  y_pred = backend.clip(y_pred, backend.epsilon(), None)
+  kl = backend.sum(backend.abs((y_true - y_pred) * (backend.log(y_true / y_pred))), axis=-1)
+  kl_2 = losses.kullback_leiber_divergence(y_true, y_pred)
+
+  return kl
+
 
 def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
   best_loss = -1
   best_weights = None
   best_epoch = 0
-
   current_epoch = 0
 
+  # ============== Define callbacks ==============
+  history = callbacks.History()
+  terminate_on_nan = callbacks.TerminateOnNaN()
+  callbacks_list = [terminate_on_nan, history]
+
+  # ============= Initialize optimizer =============
   rmsprop = optimizers.RMSprop(clipvalue=1, clipnorm=1)
   model.compile(loss='binary_crossentropy', optimizer=rmsprop, metrics=['accuracy'])
   if logger is not None:
@@ -52,8 +66,8 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
   else:
     model.summary()
 
+  # ============= Iterate through epochs =============
   while True:
-    callbacks_list = [callbacks.TerminateOnNaN()]
     model.fit(train_x,
               train_y,
               batch_size=batch_size,
@@ -62,8 +76,8 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
               shuffle=True,
               callbacks=callbacks_list)
     y_pred = model.predict(val_x, batch_size=batch_size)
-    y_pred = np.float64(y_pred)
-    val_y = np.float64(val_y)
+    # y_pred = np.float64(y_pred)
+    # val_y = np.float64(val_y)
     total_loss = 0
     for j in range(6):
       loss = log_loss(val_y[:, j], y_pred[:, j])
