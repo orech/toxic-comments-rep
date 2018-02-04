@@ -49,6 +49,7 @@ def abs_kullback_leibler(y_true, y_pred):
 
 def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
   best_loss = -1
+  best_roc_auc = -1
   best_weights = None
   best_epoch = 0
   current_epoch = 0
@@ -90,8 +91,16 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
     logger.debug('Epoch {0} loss {1} roc_auc {2} best_loss {3}'.format(current_epoch, total_loss, roc_auc, best_loss))
 
     current_epoch += 1
-    if total_loss < best_loss or best_loss == -1:
-      best_loss = total_loss
+    # if total_loss < best_loss or best_loss == -1:
+    #   best_loss = total_loss
+    #   best_weights = model.get_weights()
+    #   best_epoch = current_epoch
+    # else:
+    #   if current_epoch - best_epoch == 5:
+    #     break
+
+    if roc_auc > best_roc_auc or best_roc_auc == -1:
+      best_roc_auc = roc_auc
       best_weights = model.get_weights()
       best_epoch = current_epoch
     else:
