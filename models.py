@@ -58,7 +58,7 @@ def get_BiGRU_2dConv_2dMaxPool(embedding_matrix, num_classes, sequence_length):
     x = Bidirectional(CuDNNGRU(64, return_sequences=True))(drop_embedding)
     x = Dropout(0.2)(x)
     x = Reshape((500, 128, 1))(x)
-    x = Conv2D(filters=64, kernel_size=(3, 53), strides=(1, 1), padding='same', activation='relu', data_format='channels_last')(x)
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=(1, 1), padding='same', activation='relu', data_format='channels_last')(x)
     x = GlobalMaxPooling2D()(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
     drop_output = Dropout(0.3)(output_layer)
