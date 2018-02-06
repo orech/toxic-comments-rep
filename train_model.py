@@ -49,6 +49,7 @@ def get_kwargs(kwargs):
     parser.add_argument('--config', dest='config', action='store', help='/path/to/config.json', type=str, default=None)
     parser.add_argument('--train-clean', dest='train_clean', action='store', help='/path/to/save_train_clean_file', type=str, default='data/train_clean.csv')
     parser.add_argument('--test-clean', dest='test_clean', action='store', help='/path/to/save_test_clean_file', type=str, default='data/test_clean.csv')
+    parser.add_argument('--embeds-clean', dest='embeds_clean', action='store', type=str, default=None)
     for key, value in iteritems(parser.parse_args().__dict__):
         kwargs[key] = value
 
@@ -69,6 +70,7 @@ def main(*kargs, **kwargs):
     train_clean = kwargs['train_clean']
     test_clean = kwargs['test_clean']
     embeds_type = kwargs['embeds_type']
+    embeds_clean = kwargs['embeds_clean']
     result_path = 'data/results/'
 
     # cnn_model_file = 'data/cnn.h5'
@@ -85,10 +87,10 @@ def main(*kargs, **kwargs):
     # ====Load data====
     logger.info('Loading data...')
     test_df = load_data(test_fname)
-    train_x = np.load('data/train.clean.npy')
-    test_x = np.load('data/test.clean.npy')
-    embedding_matrix = np.load('data/embeds.clean.npy')
-    train_y = np.load('data/train.labels.npy')
+    train_x = np.load(train_clean)
+    test_x = np.load(test_clean)
+    embedding_matrix = np.load(embeds_clean)
+    train_y = np.load('/work/asr2/piunova/toxic-comments-rep/data/train.labels.npy')
 
 
     target_labels = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
