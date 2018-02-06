@@ -20,7 +20,7 @@ try:
 except ImportError:
     import pickle
 
-from embed_utils import load_data, Embeds, Logger, WordVecPlot, clear_embedding_list, read_embedding_list
+from embed_utils import load_data, Embeds, Logger, clear_embedding_list, read_embedding_list
 from data_utils import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids
 from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features, get_2BiGRU, get_BiGRU_2dConv_2dMaxPool
 from train import train, continue_train, Params, _train_model, train_folds
@@ -120,8 +120,11 @@ def main(*kargs, **kwargs):
 
    # =========== Training on folds ============
 
+    batch_size = params.get('gru').get('batch_size')
+    print(batch_size)
+
     logger.debug('Starting model training on folds...')
-    models = train_folds(train_x, train_y, 10, 128, get_model_func, logger=logger)
+    models = train_folds(train_x, train_y, 10, batch_size, get_model_func, logger=logger)
 
     if not os.path.exists(result_path):
         os.mkdir(result_path)
@@ -133,7 +136,7 @@ def main(*kargs, **kwargs):
         np.save(model_path, model.get_weights())
 
         test_predicts_path = os.path.join(result_path, "bigru_conv2d_test_predicts{0}.npy".format(fold_id))
-        test_predictions = model.predict(test_x, batch_size=128)
+        test_predictions = model.predict(test_x, batch_size=batch_size)
         test_predicts_list.append(test_predictions)
         np.save(test_predicts_path, test_predictions)
 
@@ -141,8 +144,8 @@ def main(*kargs, **kwargs):
     for fold_predict in test_predicts_list:
         test_predictions *= fold_predict
 
-    test_predictions **= (1. / len(test_predicts_list))
-    test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
+    # test_predictions **= (1. / len(test_predicts_list))
+    # test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
 
     test_ids = test_df["id"].values
     test_ids = test_ids.reshape((len(test_ids), 1))

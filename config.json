@@ -2,6 +2,7 @@
     "gru": {
         "num_epochs": 10,
         "sequence_length": 500,
-        "gru_dim": 64
+        "gru_dim": 64,
+        "batch_size": 10
     }
 }
