@@ -1,6 +1,6 @@
 {
-    "models": ["2BiGRU"],
-    "2BiGRU": {
+    "models": ["BiGRU_attention"],
+    "BiGRU_attention": {
             "folding": false,
             "num_folds": 10,
             "num_epochs": 10,
