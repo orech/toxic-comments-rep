@@ -44,7 +44,7 @@ def get_kwargs(kwargs):
     parser.add_argument('--warm-start', dest='warm_start', action='store', help='true | false', type=bool, default=False)
     parser.add_argument('--model-warm-start', dest='model_warm_start', action='store', help='CNN | LSTM | CONCAT | LOGREG | CATBOOST, warm start for several models available', type=str, default=[], nargs='+')
     parser.add_argument('--format-embeds', dest='format_embeds', action='store', help='file | json | pickle | binary', type=str, default='file')
-    parser.add_argument('--config', dest='config', action='store', help='/path/to/config.json', type=str, default=None)
+    parser.add_argument('--config', dest='config', action='store', help='/path/to/config.BiGRU_Dense.json', type=str, default=None)
     parser.add_argument('--train-clean', dest='train_clean', action='store', help='/path/to/save_train_clean_file', type=str, default='data/train.clean.npy')
     parser.add_argument('--test-clean', dest='test_clean', action='store', help='/path/to/save_test_clean_file', type=str, default='data/test.clean.npy')
     parser.add_argument('--embeds-clean', dest='embeds_clean', action='store', type=str, default=None)
@@ -108,13 +108,13 @@ def main(*kargs, **kwargs):
 
     # ============ Train models =============
     for model_name in models:
-        model = get_model(model_name, embedding_matrix, params)
-        if params.get('folding'):
+        model_func = get_model(model_name, embedding_matrix, params)
+        if params.get(model_name).get('folding'):
             # =========== Training on folds ============
             batch_size = params.get('gru').get('batch_size')
 
             logger.debug('Starting model training on folds...')
-            models = train_folds(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, get_model_func, logger=logger)
+            models = train_folds(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, model_func, logger=logger)
 
             if not os.path.exists(result_path):
                 os.mkdir(result_path)
@@ -150,6 +150,7 @@ def main(*kargs, **kwargs):
         else:
             # ============ Single model training =============
             logger.info('Training single model training...')
+            model = model_func()
             model_tr = _train_model(model,
                                     batch_size=params.get(model_name).get('batch_size'),
                                     train_x=x_train_nn,

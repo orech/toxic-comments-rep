@@ -34,7 +34,7 @@ def get_kwargs(kwargs):
     parser.add_argument('--warm-start', dest='warm_start', action='store', help='true | false', type=bool, default=False)
     parser.add_argument('--model-warm-start', dest='model_warm_start', action='store', help='CNN | LSTM | CONCAT | LOGREG | CATBOOST, warm start for several models available', type=str, default=[], nargs='+')
     parser.add_argument('--format-embeds', dest='format_embeds', action='store', help='file | json | pickle | binary', type=str, default='file')
-    parser.add_argument('--config', dest='config', action='store', help='/path/to/config.json', type=str, default=None)
+    parser.add_argument('--config', dest='config', action='store', help='/path/to/config.BiGRU_Dense.json', type=str, default=None)
     parser.add_argument('--train-clean', dest='train_clean', action='store', help='/path/to/save_train_clean_file', type=str, default='data/train_clean.npy')
     parser.add_argument('--test-clean', dest='test_clean', action='store', help='/path/to/save_test_clean_file', type=str, default='data/results/test_clean.npy')
     parser.add_argument('--embeds-clean', dest='embeds_clean', action='store', help='/path/to/save_embeds_clean_file', type=str, default='data/results/embeds_clean.npy')

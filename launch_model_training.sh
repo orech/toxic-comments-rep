@@ -20,7 +20,7 @@ WRONG_WORDS_FILE="/home/anya/toxic-comments-rep/data/correct_words.csv"
 
 LOG_FILE="log.train"
 
-CONFIG="config.json"
+CONFIG="config.2BiGRU_BN.json"
 
 
 $PY_PATH train_model.py --train=$TRAIN_DATA --test=$TEST_DATA --embeds=$EMBEDS_FILE --embeds_type=$EMBEDS_TYPE --train-clean=$TRAIN_CLEAN --test-clean=$TEST_CLEAN --embeds-clean=$EMBEDS_CLEAN --train-labels=$TRAIN_LABELS --config=$CONFIG --output=$OUTPUT_FILE --logger=$LOG_FILE
