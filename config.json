@@ -1,8 +1,13 @@
 {
-    "gru": {
-        "num_epochs": 10,
-        "sequence_length": 500,
-        "gru_dim": 64,
-        "batch_size": 10
+    "models": ["2BiGRU"],
+    "2BiGRU": {
+            "folding": false,
+            "num_folds": 10,
+            "num_epochs": 10,
+            "sequence_length": 500,
+            "gru_dim": 64,
+            "recurrent_units": 64,
+            "dense_dim": 32,
+            "batch_size": 256
     }
 }

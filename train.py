@@ -4,11 +4,52 @@ from math import pow, floor
 from keras import optimizers, callbacks, backend, losses
 from keras.callbacks import EarlyStopping, LearningRateScheduler, Callback
 from sklearn.metrics import log_loss, roc_auc_score
+from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf
 import numpy as np
 
 
 def step_decay(initial_lr, lr_drop_koef, epochs_to_drop, epoch):
     return initial_lr * pow(lr_drop_koef, floor((1 + epoch) / epochs_to_drop))
+
+def get_model(model_name, embedding_matrix, params):
+  print(model_name)
+  if model_name == '2BiGRU':
+    # ============= BiGRU =============
+    get_model_func = lambda: get_2BiGRU(embedding_matrix=embedding_matrix,
+                                        num_classes=6,
+                                        sequence_length=params.get(model_name).get('sequence_length'),
+                                        dense_size=params.get(model_name).get('dense_dim'),
+                                        recurrent_units=params.get(model_name).get('recurrent_units'))
+  elif model_name == '2BiGRU_2dConv_2dMaxPool':
+    # ============= BiGRU_Conv2D_MaxPool2D ==============
+    get_model_func = lambda: get_BiGRU_2dConv_2dMaxPool(embedding_matrix=embedding_matrix,
+                                                        num_classes=6,
+                                                        sequence_length=params.get(model_name).get('sequence_length'))
+
+  elif model_name == 'BiGRU_BN':
+    # ============= BiGRU_BN =============
+    get_model_func = lambda: get_2BiGRU_BN(embedding_matrix=embedding_matrix,
+                                           num_classes=6,
+                                           sequence_length=params.get(model_name).get('sequence_length'),
+                                           recurrent_units=params.get(model_name).get('recurrent_units'),
+                                           dense_size=params.get(model_name).get('dense_size'))
+  elif model_name == '2BiGRU_GlobMaxPool':
+    # ============= BiGRU_GlobalMaxPooling ============
+    get_model_func = lambda: get_2BiGRU_GlobMaxPool(embedding_matrix=embedding_matrix,
+                                                    num_classes=6,
+                                                    sequence_length=params.get(model_name).get('sequence_length'),
+                                                    recurrent_units=params.get(model_name).get('recurrent_units'),
+                                                    dense_size=params.get(model_name).get('dense_size'),
+                                                    dropout_rate=params.get(model_name).get('dropout'))
+  else:
+    # ============= BiGRU =============
+    get_model_func = lambda: get_2BiGRU(embedding_matrix=embedding_matrix,
+                                        num_classes=6,
+                                        sequence_length=params.get(model_name).get('sequence_length'),
+                                        dense_size=params.get(model_name).get('dense_dim'),
+                                        recurrent_units=params.get(model_name).get('recurrent_units'))
+
+  return get_model_func()
 
 
 class LossHistory(Callback):
@@ -134,6 +175,7 @@ def train_folds(X, y, fold_count, batch_size, get_model_func, logger):
 def train(x_train, y_train, model, batch_size, num_epochs, learning_rate=0.001, early_stopping_delta=0.0, early_stopping_epochs=10, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=5, logger=None):
     # adam = optimizers.Adam(lr=learning_rate)
     rmsprop = optimizers.RMSprop(clipvalue=1, clipnorm=1)
+    nadam = optimizers.Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
     model.compile(loss='binary_crossentropy', optimizer=rmsprop, metrics=['accuracy'])
     if logger is not None:
         model.summary(print_fn=lambda line: logger.debug(line))
@@ -228,8 +270,12 @@ class Params(object):
     def _update_params(self, params):
         if params is not None and params:
             for key in params.keys():
-                self._params.setdefault(key, {})
-                self._params[key].update(params[key])
+                if isinstance(params[key], dict):
+                    self._params.setdefault(key, {})
+                    self._params[key].update(params[key])
+                else:
+                    self._params.setdefault(key, None)
+                    self._params[key] = params[key]
 
     def get(self, key):
         return self._params.get(key, None)

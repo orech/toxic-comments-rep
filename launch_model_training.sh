@@ -10,10 +10,17 @@ EMBEDS_FILE="/home/anya/toxic-comments-rep/data/crawl-300d-2M.vec"
 # fasttext, glove or word2vec
 EMBEDS_TYPE="fasttext"
 
+TRAIN_CLEAN="/home/anya/toxic-comments-rep/data/train.clean.npy"
+TEST_CLEAN="/home/anya/toxic-comments-rep/data/test.clean.npy"
+EMBEDS_CLEAN="/home/anya/toxic-comments-rep/data/embeds.clean.npy"
+TRAIN_LABELS="/home/anya/toxic-comments-rep/data/train.labels.npy"
+
 SWEAR_FILE="/home/anya/toxic-comments-rep/data/swear_words.csv"
 WRONG_WORDS_FILE="/home/anya/toxic-comments-rep/data/correct_words.csv"
+
+LOG_FILE="log.train"
 
 CONFIG="config.json"
 
 
-$PY_PATH train_model.py --train=$TRAIN_DATA --test=$TEST_DATA --embeds=$EMBEDS_FILE --embeds_type=$EMBEDS_TYPE --swear-words=$SWEAR_FILE --wrong-words=$WRONG_WORDS_FILE --config=$CONFIG --output=$OUTPUT_FILE
+$PY_PATH train_model.py --train=$TRAIN_DATA --test=$TEST_DATA --embeds=$EMBEDS_FILE --embeds_type=$EMBEDS_TYPE --train-clean=$TRAIN_CLEAN --test-clean=$TEST_CLEAN --embeds-clean=$EMBEDS_CLEAN --train-labels=$TRAIN_LABELS --config=$CONFIG --output=$OUTPUT_FILE --logger=$LOG_FILE

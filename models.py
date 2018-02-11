@@ -4,7 +4,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 from keras import regularizers
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D
+from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization
 from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D
 
 from keras.layers import Bidirectional, Dropout, CuDNNGRU, CuDNNLSTM, Reshape
@@ -39,12 +39,38 @@ def get_lstm(embedding_matrix, num_classes, embed_dim, max_seq_len, l2_weight_de
     return model
 
 
-def get_2BiGRU(embedding_matrix, num_classes, embed_dim, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
+def get_2BiGRU(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(embedding_layer)
     x = Dropout(dropout_rate)(x)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=False))(x)
+    x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+def get_2BiGRU_BN(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(embedding_layer)
+    x = BatchNormalization(axis=-1)(x)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=False))(x)
+    x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+def get_2BiGRU_GlobMaxPool(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
+                                trainable=False)(input_layer)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(embedding_layer)
+    x = Dropout(dropout_rate)(x)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(x)
+    x = GlobalMaxPooling1D()(x)
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
     model = Model(inputs=input_layer, outputs=output_layer)

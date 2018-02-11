@@ -22,8 +22,8 @@ except ImportError:
 
 from embed_utils import load_data, Embeds, Logger, clear_embedding_list, read_embedding_list
 from data_utils import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids
-from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features, get_2BiGRU, get_BiGRU_2dConv_2dMaxPool
-from train import train, continue_train, Params, _train_model, train_folds
+from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features, get_2BiGRU, get_BiGRU_2dConv_2dMaxPool, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool
+from train import train, continue_train, Params, _train_model, train_folds, get_model
 from metrics import calc_metrics, get_metrics, print_metrics
 
 
@@ -34,48 +34,46 @@ PROBABILITIES_NORMALIZE_COEFFICIENT = 1.4
 
 
 def get_kwargs(kwargs):
-    parser = argparse.ArgumentParser(description='-f TRAIN_FILE -t TEST_FILE -o OUTPUT_FILE -e EMBEDS_FILE [-l LOGGER_FILE] [--swear-words SWEAR_FILE] [--wrong-words WRONG_WORDS_FILE] [--warm-start FALSE] [--format-embeds FALSE]')
+    parser = argparse.ArgumentParser(description='--train=$TRAIN_DATA --test=$TEST_DATA --embeds=$EMBEDS_FILE --embeds_type=$EMBEDS_TYPE --train-clean=$TRAIN_CLEAN --test-clean=$TEST_CLEAN --embeds-clean=$EMBEDS_CLEAN --train-labels=$TRAIN_LABELS --config=$CONFIG --output=$OUTPUT_FILE --logger=$LOG_FILE')
     parser.add_argument('-f', '--train', dest='train', action='store', help='/path/to/trian_file', type=str)
     parser.add_argument('-t', '--test', dest='test', action='store', help='/path/to/test_file', type=str)
     parser.add_argument('-o', '--output', dest='output', action='store', help='/path/to/output_file', type=str)
     parser.add_argument('-e', '--embeds', dest='embeds', action='store', help='/path/to/embeds_file', type=str)
     parser.add_argument('-et', '--embeds_type', dest='embeds_type', action='store', help='fasttext | glove | word2vec', type=str)
     parser.add_argument('-l', '--logger', dest='logger', action='store', help='/path/to/log_file', type=str, default=None)
-    parser.add_argument('--swear-words', dest='swear_words', action='store', help='/path/to/swear_words_file', type=str, default=None)
-    parser.add_argument('--wrong-words', dest='wrong_words', action='store', help='/path/to/wrong_words_file', type=str, default=None)
     parser.add_argument('--warm-start', dest='warm_start', action='store', help='true | false', type=bool, default=False)
     parser.add_argument('--model-warm-start', dest='model_warm_start', action='store', help='CNN | LSTM | CONCAT | LOGREG | CATBOOST, warm start for several models available', type=str, default=[], nargs='+')
     parser.add_argument('--format-embeds', dest='format_embeds', action='store', help='file | json | pickle | binary', type=str, default='file')
     parser.add_argument('--config', dest='config', action='store', help='/path/to/config.json', type=str, default=None)
-    parser.add_argument('--train-clean', dest='train_clean', action='store', help='/path/to/save_train_clean_file', type=str, default='data/train_clean.csv')
-    parser.add_argument('--test-clean', dest='test_clean', action='store', help='/path/to/save_test_clean_file', type=str, default='data/test_clean.csv')
+    parser.add_argument('--train-clean', dest='train_clean', action='store', help='/path/to/save_train_clean_file', type=str, default='data/train.clean.npy')
+    parser.add_argument('--test-clean', dest='test_clean', action='store', help='/path/to/save_test_clean_file', type=str, default='data/test.clean.npy')
     parser.add_argument('--embeds-clean', dest='embeds_clean', action='store', type=str, default=None)
+    parser.add_argument('--train-labels', dest='train_labels', action='store', type=str, default=None)
     for key, value in iteritems(parser.parse_args().__dict__):
         kwargs[key] = value
 
 
 def main(*kargs, **kwargs):
+
+    # ============ Parse global parameters ============
     get_kwargs(kwargs)
     train_fname = kwargs['train']
     test_fname = kwargs['test']
     result_fname = kwargs['output']
     embeds_fname = kwargs['embeds']
     logger_fname = kwargs['logger']
-    swear_words_fname = kwargs['swear_words']
-    wrong_words_fname = kwargs['wrong_words']
     warm_start = kwargs['warm_start']
     model_warm_start = [model.lower() for model in kwargs['model_warm_start']]
-    format_embeds = kwargs['format_embeds']
     config = kwargs['config']
     train_clean = kwargs['train_clean']
+    train_labels = kwargs['train_labels']
     test_clean = kwargs['test_clean']
-    embeds_type = kwargs['embeds_type']
     embeds_clean = kwargs['embeds_clean']
     result_path = 'data/results/'
 
     # cnn_model_file = 'data/cnn.h5'
-    lstm_model_file = 'data/lstm_model.h5'
-    gru_model_file = 'data/gru_model.h5'
+    # lstm_model_file = 'data/lstm_model.h5'
+    # gru_model_file = 'data/gru_model.h5'
     # concat_model_file = 'data/concat.h5'
     # cnn_model_file = 'data/cnn.h5'
     # lr_model_file = 'data/{}_logreg.bin'
@@ -84,13 +82,13 @@ def main(*kargs, **kwargs):
     # ==== Create logger ====
     logger = Logger(logging.getLogger(), logger_fname)
 
-    # ====Load data====
+    # ==== Load data ====
     logger.info('Loading data...')
     test_df = load_data(test_fname)
     train_x = np.load(train_clean)
     test_x = np.load(test_clean)
     embedding_matrix = np.load(embeds_clean)
-    train_y = np.load('/work/asr2/piunova/toxic-comments-rep/data/train.labels.npy')
+    train_y = np.load(train_labels)
 
 
     target_labels = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
@@ -104,95 +102,84 @@ def main(*kargs, **kwargs):
 
 
 
-    # ============= Load params to the models =============
+    # ============= Load params of models =============
     params = Params(config)
+    models = params.get('models')
 
-    # ============= BiGRU =============
-    # get_model_func = lambda: get_2BiGRU(embedding_matrix=embedding_matrix,
-    #                                     num_classes=6,
-    #                                     embed_dim=300,
-    #                                     sequence_length=params.get('gru').get('sequence_length'),
-    #                                     recurrent_units=params.get('gru').get('gru_dim'),
-    #                                     dense_size=params.get('gru').get('dense_dim'))
+    # ============ Train models =============
+    for model_name in models:
+        model = get_model(model_name, embedding_matrix, params)
+        if params.get('folding'):
+            # =========== Training on folds ============
+            batch_size = params.get('gru').get('batch_size')
 
-    # ============= BiGRU_Conv2D_MaxPool2D ==============
-    get_model_func = lambda: get_BiGRU_2dConv_2dMaxPool(embedding_matrix=embedding_matrix,
-                                                        num_classes=6,
-                                                        sequence_length=500)
+            logger.debug('Starting model training on folds...')
+            models = train_folds(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, get_model_func, logger=logger)
 
-   # =========== Training on folds ============
+            if not os.path.exists(result_path):
+                os.mkdir(result_path)
 
-    batch_size = params.get('gru').get('batch_size')
-    print(batch_size)
+            logger.debug('Predicting results...')
+            test_predicts_list = []
+            for fold_id, model in enumerate(models):
+                model_path = os.path.join(result_path, model_name, "{0}_weights.npy".format(fold_id))
+                np.save(model_path, model.get_weights())
 
-    logger.debug('Starting model training on folds...')
-    models = train_folds(train_x, train_y, 10, batch_size, get_model_func, logger=logger)
+                test_predicts_path = os.path.join(result_path, model_name, "_test_predicts{0}.npy".format(fold_id))
+                test_predictions = model.predict(test_x, batch_size=batch_size)
+                test_predicts_list.append(test_predictions)
+                np.save(test_predicts_path, test_predictions)
 
-    if not os.path.exists(result_path):
-        os.mkdir(result_path)
+            test_predictions = np.ones(test_predicts_list[0].shape)
+            for fold_predict in test_predicts_list:
+                test_predictions *= fold_predict
 
-    logger.debug('Predicting results...')
-    test_predicts_list = []
-    for fold_id, model in enumerate(models):
-        model_path = os.path.join(result_path, "bigru_conv2d{0}_weights.npy".format(fold_id))
-        np.save(model_path, model.get_weights())
+            # test_predictions **= (1. / len(test_predicts_list))
+            # test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
 
-        test_predicts_path = os.path.join(result_path, "bigru_conv2d_test_predicts{0}.npy".format(fold_id))
-        test_predictions = model.predict(test_x, batch_size=batch_size)
-        test_predicts_list.append(test_predictions)
-        np.save(test_predicts_path, test_predictions)
+            logger.info('Saving prediction...')
+            test_ids = test_df["id"].values
+            test_ids = test_ids.reshape((len(test_ids), 1))
 
-    test_predictions = np.ones(test_predicts_list[0].shape)
-    for fold_predict in test_predicts_list:
-        test_predictions *= fold_predict
+            test_predictions = pd.DataFrame(data=test_predictions, columns=target_labels)
+            test_predictions["id"] = test_ids
+            test_predictions = test_predictions[["id"] + target_labels]
+            submit_path = os.path.join(result_path, model_name, "submit")
+            test_predictions.to_csv(submit_path, index=False)
 
-    # test_predictions **= (1. / len(test_predicts_list))
-    # test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
+        else:
+            # ============ Single model training =============
+            logger.info('Training single model training...')
+            model_tr = _train_model(model,
+                                    batch_size=params.get(model_name).get('batch_size'),
+                                    train_x=x_train_nn,
+                                    train_y=y_train_nn,
+                                    val_x=x_eval_nn,
+                                    val_y=y_eval_nn,
+                                    logger=logger)
+            test_predictions = model_tr.predict(test_x, batch_size=params.get(model_name).get('batch_size'))
 
-    test_ids = test_df["id"].values
-    test_ids = test_ids.reshape((len(test_ids), 1))
+            # ============== Saving trained parameters ================
+            logger.info('Saving model parameters...')
+            model_path = os.path.join(result_path, model_name, "_weights.npy")
+            np.save(model_path, model.get_weights())
 
-    test_predictions = pd.DataFrame(data=test_predictions, columns=target_labels)
-    test_predictions["id"] = test_ids
-    test_predictions = test_predictions[["id"] + target_labels]
-    submit_path = os.path.join(result_path, "2BiGRU_Conv2D_MaxPool2D_model")
-    test_predictions.to_csv(submit_path, index=False)
+            # ============== Postprocessing ===============
 
+            # test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
 
-    # ============ Single model training =============
+            # ============== Saving predictions ==============
 
-    # logger.info('Training single GRU model...')
-    # model = get_model_func()
-    # model_tr = _train_model(model,
-    #                         batch_size=256,
-    #                         train_x=x_train_nn,
-    #                         train_y=y_train_nn,
-    #                         val_x=x_eval_nn,
-    #                         val_y=y_eval_nn,
-    #                         logger=logger)
-    # test_predictions = model_tr.predict(test_x, batch_size=params.get('gru').get('batch_size'))
+            logger.info('Saving predictions...')
+            test_ids = test_df["id"].values
+            test_ids = test_ids.reshape((len(test_ids), 1))
 
-    # ============== Saving trained parameters ================
+            test_predicts = pd.DataFrame(data=test_predictions, columns=target_labels)
+            test_predicts["id"] = test_ids
+            test_predicts = test_predicts[["id"] + target_labels]
+            submit_path = os.path.join(result_path, model_name, "submit")
+            test_predicts.to_csv(submit_path, index=False)
 
-    # logger.info('Saving model parameters...')
-    # model_tr.save(gru_model_file)
-
-    # ============== Postprocessing ===============
-
-    # test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
-    #
-    # # ============== Saving predictions ==============
-    #
-    # logger.info('Saving predictions...')
-    # # save_predictions(test_df, test_predictions, target_labels)
-    # test_ids = test_df["id"].values
-    # test_ids = test_ids.reshape((len(test_ids), 1))
-    #
-    # test_predicts = pd.DataFrame(data=test_predictions, columns=target_labels)
-    # test_predicts["id"] = test_ids
-    # test_predicts = test_predicts[["id"] + target_labels]
-    # submit_path = os.path.join(result_path, "submit")
-    # test_predicts.to_csv(submit_path, index=False)
 
 
 
