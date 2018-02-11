@@ -113,7 +113,7 @@ def main(*kargs, **kwargs):
             # =========== Training on folds ============
             batch_size = params.get('gru').get('batch_size')
 
-            logger.debug('Starting model training on folds...')
+            logger.debug('Starting {0} training on folds...'.format(model_name))
             models = train_folds(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, model_func, logger=logger)
 
             if not os.path.exists(result_path):
@@ -122,10 +122,10 @@ def main(*kargs, **kwargs):
             logger.debug('Predicting results...')
             test_predicts_list = []
             for fold_id, model in enumerate(models):
-                model_path = os.path.join(result_path, model_name, "{0}_weights.npy".format(fold_id))
+                model_path = os.path.join(result_path, "{1}_{0}_weights.npy".format(fold_id, model_name))
                 np.save(model_path, model.get_weights())
 
-                test_predicts_path = os.path.join(result_path, model_name, "_test_predicts{0}.npy".format(fold_id))
+                test_predicts_path = os.path.join(result_path, "{1}_test_predicts{0}.npy".format(fold_id, model_name))
                 test_predictions = model.predict(test_x, batch_size=batch_size)
                 test_predicts_list.append(test_predictions)
                 np.save(test_predicts_path, test_predictions)
@@ -144,12 +144,12 @@ def main(*kargs, **kwargs):
             test_predictions = pd.DataFrame(data=test_predictions, columns=target_labels)
             test_predictions["id"] = test_ids
             test_predictions = test_predictions[["id"] + target_labels]
-            submit_path = os.path.join(result_path, model_name, "submit")
+            submit_path = os.path.join(result_path, "{0}_folds.submit".format(model_name))
             test_predictions.to_csv(submit_path, index=False)
 
         else:
             # ============ Single model training =============
-            logger.info('Training single model training...')
+            logger.info('Training single {0} training...'.format(model_name))
             model = model_func()
             model_tr = _train_model(model,
                                     batch_size=params.get(model_name).get('batch_size'),
@@ -162,7 +162,7 @@ def main(*kargs, **kwargs):
 
             # ============== Saving trained parameters ================
             logger.info('Saving model parameters...')
-            model_path = os.path.join(result_path, model_name, "_weights.npy")
+            model_path = os.path.join(result_path, "{0}_weights.npy".format(model_name))
             np.save(model_path, model.get_weights())
 
             # ============== Postprocessing ===============
@@ -178,7 +178,7 @@ def main(*kargs, **kwargs):
             test_predicts = pd.DataFrame(data=test_predictions, columns=target_labels)
             test_predicts["id"] = test_ids
             test_predicts = test_predicts[["id"] + target_labels]
-            submit_path = os.path.join(result_path, model_name, "submit")
+            submit_path = os.path.join(result_path, "{0}.submit".format(model_name))
             test_predicts.to_csv(submit_path, index=False)
 
 
