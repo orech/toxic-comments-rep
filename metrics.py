@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from sklearn.metrics import log_loss, roc_auc_score, f1_score, precision_score, recall_score
+from sklearn.metrics import log_loss, roc_auc_score, f1_score, precision_score, recall_score, accuracy_score
 
 
 def calc_metrics(y_true, y_hat, max_steps=1000):

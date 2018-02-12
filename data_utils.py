@@ -65,9 +65,7 @@ def combine_swear_words(text, swear_words):
     return result
 
 
-def clean_text(df, tokinizer, wrong_words_dict, swear_words, regexps, autocorrect=True, swear_combine=True):
-    df.fillna("__NA__", inplace=True)
-    texts = df.tolist()
+def clean_texts(texts, tokinizer, wrong_words_dict, swear_words, regexps, autocorrect=True, swear_combine=True):
     result = []
     for text in tqdm(texts):
         tokens = tokinizer.tokenize(text.lower())
@@ -91,6 +89,49 @@ def tokenize_sentences(sentences, words_dict):
         tokens = nltk.tokenize.word_tokenize(sentence)
         result = []
         for word in tokens:
+            word = word.lower()
+            if word not in words_dict:
+                words_dict[word] = len(words_dict)
+            word_index = words_dict[word]
+            result.append(word_index)
+        tokenized_sentences.append(result)
+    return tokenized_sentences, words_dict
+
+
+def replace_short_forms(phrase):
+    phrase = re.sub(r"n\'t", " not", phrase)
+    phrase = re.sub(r"\'re", " are", phrase)
+    phrase = re.sub(r"\'s", " is", phrase)
+    phrase = re.sub(r"\'d", " would", phrase)
+    phrase = re.sub(r"\'ll", " will", phrase)
+    phrase = re.sub(r"\'t", " not", phrase)
+    phrase = re.sub(r"\'ve", " have", phrase)
+    phrase = re.sub(r"\'m", " am", phrase)
+
+    return phrase
+
+def tokenize_sentences_adv(sentences, words_dict):
+    tokenized_sentences = []
+    for sentence in tqdm(sentences):
+        if hasattr(sentence, "decode"):
+            sentence = sentence.decode("utf-8")
+        tokens = nltk.tokenize.word_tokenize(sentence.lower())
+        # replace n't 'd 've 'm by not would have am respectively
+        tokens = [replace_short_forms(token) for token in tokens]
+        tokens2 = []
+        # split words and punctuation
+        for token in tokens:
+            tokens2.extend(re.findall(r"[\w]+|[\\(\-)=.,!?;:/%$#@<>_~`|*№\"]+", token))
+        tokens3 = []
+        # split words connected by underscore
+        for token in tokens2:
+            tokens3.extend(re.split(r"_+", token))
+        tokens4 = []
+        # split words and numbers
+        for token in tokens3:
+            tokens4.extend(re.split(r'(\d+)', token))
+        result = []
+        for word in tokens4:
             word = word.lower()
             if word not in words_dict:
                 words_dict[word] = len(words_dict)

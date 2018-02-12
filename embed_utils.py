@@ -136,16 +136,18 @@ def read_embedding_list(file_path):
 def clear_embedding_list(embedding_list, embedding_word_dict, words_dict):
     cleared_embedding_list = []
     cleared_embedding_word_dict = {}
+    out_of_vocabulary = []
 
     for word in words_dict:
         if word not in embedding_word_dict:
+            out_of_vocabulary.append(word)
             continue
         word_id = embedding_word_dict[word]
         row = embedding_list[word_id]
         cleared_embedding_list.append(row)
         cleared_embedding_word_dict[word] = len(cleared_embedding_word_dict)
 
-    return cleared_embedding_list, cleared_embedding_word_dict
+    return cleared_embedding_list, cleared_embedding_word_dict, set(out_of_vocabulary)
 
 
 class Logger(object):
