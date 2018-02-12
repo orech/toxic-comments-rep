@@ -10,9 +10,9 @@ import gensim
 
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
-from ggplot import *
+#from ggplot import *
 
 try:
     import cPickle as pickle
