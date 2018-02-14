@@ -1,0 +1,15 @@
+{
+    "models": ["pyramidCNN"],
+    "pyramidCNN": {
+            "folding": false,
+            "num_folds": 10,
+            "num_epochs": 10,
+            "sequence_length": 500,
+            "dropout_rate": 0.3,
+            "dense_size": 128,
+            "filter_size": 3,
+            "num_of_filters": 256,
+            "num_of_blocks": 1,
+            "batch_size": 256
+    }
+}

@@ -21,7 +21,7 @@ except ImportError:
     import pickle
 
 from embed_utils import load_data, Embeds, Logger, clear_embedding_list, read_embedding_list
-from data_utils import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids
+from data_utils import calc_text_uniq_words, clean_texts, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids
 from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features, get_2BiGRU, get_BiGRU_2dConv_2dMaxPool, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool
 from train import train, continue_train, Params, _train_model, train_folds, get_model
 from metrics import calc_metrics, get_metrics, print_metrics
@@ -69,7 +69,11 @@ def main(*kargs, **kwargs):
     train_labels = kwargs['train_labels']
     test_clean = kwargs['test_clean']
     embeds_clean = kwargs['embeds_clean']
-    result_path = 'data/results/'
+    result_path = './outputs/'
+
+
+    if not os.path.exists(result_path):
+        os.mkdir(result_path)
 
     # cnn_model_file = 'data/cnn.h5'
     # lstm_model_file = 'data/lstm_model.h5'
@@ -111,10 +115,10 @@ def main(*kargs, **kwargs):
         model_func = get_model(model_name, embedding_matrix, params)
         if params.get(model_name).get('folding'):
             # =========== Training on folds ============
-            batch_size = params.get('gru').get('batch_size')
+            batch_size = params.get(model_name).get('batch_size')
 
             logger.debug('Starting {0} training on folds...'.format(model_name))
-            models = train_folds(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, model_func, logger=logger)
+            models = train_folds(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, model_func, params.get(model_name).get('optimizer'), logger=logger)
 
             if not os.path.exists(result_path):
                 os.mkdir(result_path)
@@ -157,6 +161,7 @@ def main(*kargs, **kwargs):
                                     train_y=y_train_nn,
                                     val_x=x_eval_nn,
                                     val_y=y_eval_nn,
+                                    optimizer=params.get(model_name).get('optimizer'),
                                     logger=logger)
             test_predictions = model_tr.predict(test_x, batch_size=params.get(model_name).get('batch_size'))
 

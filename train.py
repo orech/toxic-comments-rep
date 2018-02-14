@@ -3,8 +3,8 @@ from math import pow, floor
 
 from keras import optimizers, callbacks, backend, losses
 from keras.callbacks import EarlyStopping, LearningRateScheduler, Callback
-from sklearn.metrics import log_loss, roc_auc_score
-from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiGRU_Dense
+from sklearn.metrics import log_loss, roc_auc_score, accuracy_score
+from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiGRU_Dense, get_pyramidCNN
 import numpy as np
 
 
@@ -49,6 +49,16 @@ def get_model(model_name, embedding_matrix, params):
                                         sequence_length=params.get(model_name).get('sequence_length'),
                                         dense_sizes=params.get(model_name).get('dense_dims'),
                                         recurrent_units=params.get(model_name).get('recurrent_units'))
+  elif model_name == 'pyramidCNN':
+    get_model_func = lambda: get_pyramidCNN(embedding_matrix=embedding_matrix,
+                                        num_classes=6,
+                                        sequence_length=params.get(model_name).get('sequence_length'),
+                                        dropout_rate=params.get(model_name).get('dropout_rate'),
+                                        num_of_filters=params.get(model_name).get('num_of_filters'),
+                                        filter_size=params.get(model_name).get('filter_size'),
+                                        num_of_blocks=params.get(model_name).get('num_of_blocks'),
+                                        dense_size=params.get(model_name).get('dense_size'),
+                                        l2_weight_decay=0.0001)
 
   else:
     # ============= BiGRU =============
@@ -97,7 +107,7 @@ def abs_kullback_leibler(y_true, y_pred):
   return kl
 
 
-def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
+def _train_model(model, batch_size, train_x, train_y, val_x, val_y, optimizer, logger):
   best_loss = -1
   best_roc_auc = -1
   best_weights = None
@@ -110,10 +120,16 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
   callbacks_list = [terminate_on_nan, history]
 
   # ============= Initialize optimizer =============
-  # adam = optimizers.Adam(lr=learning_rate)
-  nadam = optimizers.Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
-  rmsprop = optimizers.RMSprop(clipvalue=1, clipnorm=1)
-  model.compile(loss='binary_crossentropy', optimizer=nadam, metrics=['accuracy'])
+  if optimizer == 'adam':
+      optimizer = optimizers.Adam()
+  elif optimizer == 'nadam':
+      optimizer = optimizers.Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
+  elif optimizer == 'rmsprop':
+      optimizer = optimizers.RMSprop(clipvalue=1, clipnorm=1)
+  else:
+      optimizer = optimizers.RMSprop(clipvalue=1, clipnorm=1)
+
+  model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
   if logger is not None:
     model.summary(print_fn=lambda line: logger.debug(line))
@@ -131,6 +147,9 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
               callbacks=callbacks_list)
     y_pred = model.predict(val_x, batch_size=batch_size)
 
+    y_pred = np.float64(y_pred)
+    val_y = np.float64(val_y)
+
     total_loss = 0
     for j in range(6):
       loss = log_loss(val_y[:, j], y_pred[:, j])
@@ -139,8 +158,7 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
     total_loss /= 6.
 
     roc_auc = roc_auc_score(val_y, y_pred)
-
-    logger.debug('Epoch {0} loss {1} roc_auc {2} best_loss {3}'.format(current_epoch, total_loss, roc_auc, best_loss))
+    logger.debug('Epoch {0} : loss {1}, roc_auc {2}, best_loss {3}'.format(current_epoch, total_loss, roc_auc, best_loss))
 
     current_epoch += 1
     if total_loss < best_loss or best_loss == -1:
@@ -162,7 +180,7 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
   model.set_weights(best_weights)
   return model
 
-def train_folds(X, y, fold_count, batch_size, get_model_func, logger):
+def train_folds(X, y, fold_count, batch_size, get_model_func, optimizer, logger):
     fold_size = len(X) // fold_count
     models = []
     for fold_id in range(0, fold_count):
@@ -178,17 +196,17 @@ def train_folds(X, y, fold_count, batch_size, get_model_func, logger):
       val_x = X[fold_start:fold_end]
       val_y = y[fold_start:fold_end]
 
-      model = _train_model(get_model_func(), batch_size, train_x, train_y, val_x, val_y, logger)
+      model = _train_model(get_model_func(), batch_size, train_x, train_y, val_x, val_y, optimizer, logger)
       models.append(model)
 
     return models
 
 
 def train(x_train, y_train, model, batch_size, num_epochs, learning_rate=0.001, early_stopping_delta=0.0, early_stopping_epochs=10, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=5, logger=None):
-    # adam = optimizers.Adam(lr=learning_rate)
+    adam = optimizers.Adam(lr=learning_rate)
     rmsprop = optimizers.RMSprop(clipvalue=1, clipnorm=1)
     nadam = optimizers.Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
-    model.compile(loss='binary_crossentropy', optimizer=rmsprop, metrics=['accuracy'])
+    model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
     if logger is not None:
         model.summary(print_fn=lambda line: logger.debug(line))
     else:

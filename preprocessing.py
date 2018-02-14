@@ -4,6 +4,7 @@ import argparse
 import logging
 from six import iteritems
 import numpy as np
+from alphabet_detector import AlphabetDetector
 
 from catboost import CatBoostClassifier
 from sklearn.linear_model import LogisticRegression
@@ -14,8 +15,8 @@ from keras.models import load_model
 from nltk.tokenize import RegexpTokenizer
 from tqdm import tqdm
 
-from embed_utils import load_data, Embeds, Logger, WordVecPlot, read_embedding_list, clear_embedding_list
-from data_utils import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids
+from embed_utils import load_data, Embeds, Logger, read_embedding_list, clear_embedding_list
+from data_utils import calc_text_uniq_words, clean_texts, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids, tokenize_sentences_adv
 
 UNKNOWN_WORD = "_UNK_"
 END_WORD = "_END_"
@@ -55,6 +56,7 @@ def main(*kargs, **kwargs):
     embeds_fname = kwargs['embeds']
     train_labels = 'data/train.labels.npy'
 
+
     # ==== Create logger ====
     logger = Logger(logging.getLogger(), logger_fname)
 
@@ -70,40 +72,39 @@ def main(*kargs, **kwargs):
     list_sentences_train = train_df['comment_text'].fillna(NAN_WORD).values
     list_sentences_test = test_df['comment_text'].fillna(NAN_WORD).values
 
-    train_tokens, word_dict = tokenize_sentences(list_sentences_train, {})
-    test_tokens, word_dict = tokenize_sentences(list_sentences_test, word_dict)
+    # train_tokens, word_dict = tokenize_sentences(list_sentences_train, {})
+    # test_tokens, word_dict = tokenize_sentences(list_sentences_test, word_dict)
+
+    train_tokens, word_dict = tokenize_sentences_adv(list_sentences_train, {})
+    test_tokens, word_dict = tokenize_sentences_adv(list_sentences_test, word_dict)
 
     word_dict[UNKNOWN_WORD] = len(word_dict)
 
 
-    # ====Load additional data====
-    # logger.info('Loading additional data...')
-    # swear_words = load_data(swear_words_fname, func=lambda x: set(x.T[0]), header=None)
-    # wrong_words_dict = load_data(wrong_words_fname, func=lambda x: {val[0] : val[1] for val in x})
-    #
-    # tokinizer = RegexpTokenizer(r'\w+')
-    # regexps = [re.compile("([a-zA-Z]+)([0-9]+)"), re.compile("([0-9]+)([a-zA-Z]+)")]
+    # ==== Load additional data ====
+    logger.info('Loading additional data...')
+    swear_words = load_data(swear_words_fname, func=lambda x: set(x.T[0]), header=None)
+    wrong_words_dict = load_data(wrong_words_fname, func=lambda x: {val[0] : val[1] for val in x})
 
-    #====Clean texts====
-    # logger.info('Cleaning text...')
-    # train_df['comment_text'] = clean_text(train_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
-    # test_df['comment_text'] = clean_text(test_df['comment_text'], tokinizer, wrong_words_dict, swear_words, regexps)
-    #
-    # train_df['text_len'] = train_df['comment_text_clean'].apply(lambda words: len(words.split()))
-    # test_df['text_len'] = test_df['comment_text_clean'].apply(lambda words: len(words.split()))
 
-    # ====Save preprocessed data====
-    # logger.info('Saving preprocessed data...')
-    # test_df.to_csv(test_clean, index=False, header=True)
-    # train_df.to_csv(train_clean, index=False, header=True)
-
-    # ==== Load embedding vectors and clean it ====
+    # ==== Load embedding vectors and clean them ====
     logger.info('Loading embeddings...')
     embedding_list, embedding_word_dict = read_embedding_list(embeds_fname)
     embedding_size = len(embedding_list[0])
 
     logger.info('Cleaning embedding list...')
-    embedding_list, embedding_word_dict = clear_embedding_list(embedding_list, embedding_word_dict, word_dict)
+    embedding_list, embedding_word_dict, oov_words = clear_embedding_list(embedding_list, embedding_word_dict, word_dict)
+
+    # ======== Clean oov words and save them =========
+    # oov_cleaned = []
+    # ad = AlphabetDetector()
+    # with open('oov_words.txt', 'wt+') as oov_file:
+    #     for w in oov_words:
+    #         if ad.only_alphabet_chars(w, "LATIN") and re.match(r'^[A-Za-z]+$', w) and (len(w) <= 15):
+    #             oov_cleaned.append(w)
+    #             oov_file.write(w+'\n')
+    # oov_file.close()
+
 
     embedding_word_dict[UNKNOWN_WORD] = len(embedding_word_dict)
     embedding_list.append([0.] * embedding_size)
@@ -124,7 +125,6 @@ def main(*kargs, **kwargs):
                                                     words_list=id_to_word,
                                                     embedding_word_dict=embedding_word_dict,
                                                     sentences_length=500)
-
 
     # ==== Prepare train/test data for NN ====
     x = np.array(train_token_ids)
