@@ -21,7 +21,7 @@ except ImportError:
     import pickle
 
 from embed_utils import load_data, Embeds, Logger, clear_embedding_list, read_embedding_list
-from data_utils import calc_text_uniq_words, clean_text, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids
+from data_utils import calc_text_uniq_words, clean_texts, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids
 from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features, get_2BiGRU, get_BiGRU_2dConv_2dMaxPool, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool
 from train import train, continue_train, Params, _train_model, train_folds, get_model
 from metrics import calc_metrics, get_metrics, print_metrics
@@ -69,7 +69,11 @@ def main(*kargs, **kwargs):
     train_labels = kwargs['train_labels']
     test_clean = kwargs['test_clean']
     embeds_clean = kwargs['embeds_clean']
-    result_path = 'data/results/'
+    result_path = './outputs/'
+
+
+    if not os.path.exists(result_path):
+        os.mkdir(result_path)
 
     # cnn_model_file = 'data/cnn.h5'
     # lstm_model_file = 'data/lstm_model.h5'
