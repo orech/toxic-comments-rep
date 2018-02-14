@@ -107,7 +107,7 @@ def abs_kullback_leibler(y_true, y_pred):
   return kl
 
 
-def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
+def _train_model(model, batch_size, train_x, train_y, val_x, val_y, optimizer, logger):
   best_loss = -1
   best_roc_auc = -1
   best_weights = None
@@ -120,10 +120,16 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
   callbacks_list = [terminate_on_nan, history]
 
   # ============= Initialize optimizer =============
-  # adam = optimizers.Adam(lr=learning_rate)
-  nadam = optimizers.Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
-  rmsprop = optimizers.RMSprop(clipvalue=1, clipnorm=1)
-  model.compile(loss='binary_crossentropy', optimizer=nadam, metrics=['accuracy'])
+  if optimizer == 'adam':
+      optimizer = optimizers.Adam()
+  elif optimizer == 'nadam':
+      optimizer = optimizers.Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
+  elif optimizer == 'rmsprop':
+      optimizer = optimizers.RMSprop(clipvalue=1, clipnorm=1)
+  else:
+      optimizer = optimizers.RMSprop(clipvalue=1, clipnorm=1)
+
+  model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
   if logger is not None:
     model.summary(print_fn=lambda line: logger.debug(line))
@@ -174,7 +180,7 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, logger):
   model.set_weights(best_weights)
   return model
 
-def train_folds(X, y, fold_count, batch_size, get_model_func, logger):
+def train_folds(X, y, fold_count, batch_size, get_model_func, optimizer, logger):
     fold_size = len(X) // fold_count
     models = []
     for fold_id in range(0, fold_count):
@@ -190,7 +196,7 @@ def train_folds(X, y, fold_count, batch_size, get_model_func, logger):
       val_x = X[fold_start:fold_end]
       val_y = y[fold_start:fold_end]
 
-      model = _train_model(get_model_func(), batch_size, train_x, train_y, val_x, val_y, logger)
+      model = _train_model(get_model_func(), batch_size, train_x, train_y, val_x, val_y, optimizer, logger)
       models.append(model)
 
     return models

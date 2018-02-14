@@ -175,7 +175,8 @@ def get_BiGRU_Attention(embedding_matrix, num_classes, sequence_length, recurren
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
                                 trainable=False)(input_layer)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(embedding_layer)
-    x = Dropout(dropout_rate)(x)
+    x = BatchNormalization()(x)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(x)
     x = Attention(sequence_length)(x)
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
     x = Dropout(dropout_rate)(x)

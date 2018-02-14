@@ -115,10 +115,10 @@ def main(*kargs, **kwargs):
         model_func = get_model(model_name, embedding_matrix, params)
         if params.get(model_name).get('folding'):
             # =========== Training on folds ============
-            batch_size = params.get('gru').get('batch_size')
+            batch_size = params.get(model_name).get('batch_size')
 
             logger.debug('Starting {0} training on folds...'.format(model_name))
-            models = train_folds(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, model_func, logger=logger)
+            models = train_folds(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, model_func, params.get(model_name).get('optimizer'), logger=logger)
 
             if not os.path.exists(result_path):
                 os.mkdir(result_path)
@@ -161,6 +161,7 @@ def main(*kargs, **kwargs):
                                     train_y=y_train_nn,
                                     val_x=x_eval_nn,
                                     val_y=y_eval_nn,
+                                    optimizer=params.get(model_name).get('optimizer'),
                                     logger=logger)
             test_predictions = model_tr.predict(test_x, batch_size=params.get(model_name).get('batch_size'))
 
