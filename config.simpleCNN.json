@@ -1,15 +1,13 @@
 {
-    "models": ["pyramidCNN"],
-    "pyramidCNN": {
-            "folding": false,
+    "models": ["simpleCNN"],
+    "simpleCNN": {
+            "folding": true,
             "num_folds": 10,
             "num_epochs": 10,
             "sequence_length": 500,
             "dropout_rate": 0.3,
-            "dense_size": 128,
-            "filter_size": 3,
+            "filter_sizes": [3, 4, 5],
             "num_of_filters": 256,
-            "num_of_blocks": 3,
             "batch_size": 128,
             "optimizer": "adam"
     }

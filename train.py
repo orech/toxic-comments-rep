@@ -4,7 +4,7 @@ from math import pow, floor
 from keras import optimizers, callbacks, backend, losses
 from keras.callbacks import EarlyStopping, LearningRateScheduler, Callback
 from sklearn.metrics import log_loss, roc_auc_score, accuracy_score
-from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiGRU_Dense, get_pyramidCNN
+from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiGRU_Dense, get_pyramidCNN, get_simpleCNN, get__original_pyramidCNN
 import numpy as np
 
 
@@ -59,6 +59,22 @@ def get_model(model_name, embedding_matrix, params):
                                         num_of_blocks=params.get(model_name).get('num_of_blocks'),
                                         dense_size=params.get(model_name).get('dense_size'),
                                         l2_weight_decay=0.0001)
+  elif model_name == 'original_pyramidCNN':
+      get_model_func = lambda: get__original_pyramidCNN(embedding_matrix=embedding_matrix,
+                                              num_classes=6,
+                                              sequence_length=params.get(model_name).get('sequence_length'),
+                                              dropout_rate=params.get(model_name).get('dropout_rate'),
+                                              num_of_filters=params.get(model_name).get('num_of_filters'),
+                                              filter_size=params.get(model_name).get('filter_size'),
+                                              num_of_blocks=params.get(model_name).get('num_of_blocks'),
+                                              l2_weight_decay=0.0001)
+  elif model_name == 'simpleCNN':
+      get_model_func = lambda: get_simpleCNN(embedding_matrix=embedding_matrix,
+                                              num_classes=6,
+                                              sequence_length=params.get(model_name).get('sequence_length'),
+                                              dropout_rate=params.get(model_name).get('dropout_rate'),
+                                              num_of_filters=params.get(model_name).get('num_of_filters'),
+                                              filter_sizes=params.get(model_name).get('filter_sizes'))
 
   else:
     # ============= BiGRU =============
@@ -122,12 +138,16 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, optimizer, l
   # ============= Initialize optimizer =============
   if optimizer == 'adam':
       optimizer = optimizers.Adam()
+      logger.info('Initialize Adam optimizer')
   elif optimizer == 'nadam':
       optimizer = optimizers.Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
+      logger.info('Initialize Nadam optimizer')
   elif optimizer == 'rmsprop':
       optimizer = optimizers.RMSprop(clipvalue=1, clipnorm=1)
+      logger.info('Initialize RMSprop optimizer')
   else:
       optimizer = optimizers.RMSprop(clipvalue=1, clipnorm=1)
+      logger.info('Initialize RMSprop optimizer')
 
   model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 

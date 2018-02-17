@@ -5,7 +5,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from keras import regularizers
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda
-from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D
+from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D, Concatenate
 
 from keras.layers import Bidirectional, Dropout, CuDNNGRU, CuDNNLSTM, Reshape
 from keras.models import Model
@@ -263,9 +263,68 @@ def get_pyramidCNN(embedding_matrix, num_classes, sequence_length, dropout_rate,
 
     globalPooled = GlobalMaxPooling1D()(res)
     drop = Dropout(dropout_rate)(globalPooled)
-    dense = Dense(dense_size,activation='relu', kernel_regularizer=regularizers.l2(l2_weight_decay))(drop)
-    output_layer = Dense(num_classes, activation="sigmoid", kernel_regularizer=regularizers.l2(l2_weight_decay))(dense)
+    #dense = Dense(dense_size,activation='relu', kernel_regularizer=regularizers.l2(l2_weight_decay))(drop)
+    output_layer = Dense(num_classes, activation="sigmoid", kernel_regularizer=regularizers.l2(l2_weight_decay))(drop)
 
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+def get__original_pyramidCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_size, num_of_blocks, l2_weight_decay=0.0001):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1],
+                                weights=[embedding_matrix], trainable=False)(input_layer)
+
+    region_embedding = Conv1D(num_of_filters, filter_size)(embedding_layer)
+
+
+    pre_activation_conv0_1 = Lambda(lambda x: K.relu(x))(region_embedding)
+    conv0_1 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv0_1)
+
+    pre_activation_conv0_2 = Lambda(lambda x: K.relu(x))(conv0_1)
+    conv0_2 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv0_2)
+
+    shortcut0 = Lambda(lambda x: x[0] + x[1])([conv0_2, region_embedding])
+    res = shortcut0
+
+    for i in range(num_of_blocks):
+        pooled = MaxPooling1D(pool_size=3, strides=2)(res)
+
+        pre_activation_conv1 = Lambda(lambda x: K.relu(x))(pooled)
+        conv1 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv1)
+
+        pre_activation_conv2 = Lambda(lambda x: K.relu(x))(conv1)
+        conv2 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv2)
+
+        shortcut = Lambda(lambda x: x[0] + x[1])([conv2, pooled])
+
+        res = shortcut
+
+    globalPooled = GlobalMaxPooling1D()(res)
+    drop = Dropout(dropout_rate)(globalPooled)
+    output_layer = Dense(num_classes, activation="sigmoid", kernel_regularizer=regularizers.l2(l2_weight_decay))(drop)
+
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+
+
+
+
+def get_simpleCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_sizes):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1],
+                                weights=[embedding_matrix], trainable=False)(input_layer)
+
+    pooled_outputs = []
+    for i,filter_size in enumerate(filter_sizes):
+        conv = Conv1D(num_of_filters, filter_size, activation='relu')(embedding_layer)
+        pooled = GlobalMaxPooling1D()(conv)
+        pooled_outputs.append(pooled)
+    concat = Concatenate(1)(pooled_outputs)
+    drop = Dropout(dropout_rate)(concat)
+    output_layer = Dense(num_classes, activation="sigmoid")(drop)
     model = Model(inputs=input_layer, outputs=output_layer)
     return model
 
