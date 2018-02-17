@@ -6,7 +6,7 @@
             "num_epochs": 10,
             "sequence_length": 500,
             "recurrent_units": 128,
-            "dense_dim": 64,
+            "dense_dims": 96,
             "dropout":0.5,
             "batch_size": 256
     }
