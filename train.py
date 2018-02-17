@@ -5,6 +5,7 @@ from keras import optimizers, callbacks, backend, losses
 from keras.callbacks import EarlyStopping, LearningRateScheduler, Callback
 from sklearn.metrics import log_loss, roc_auc_score, accuracy_score
 from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiGRU_Dense, get_pyramidCNN, get_simpleCNN, get__original_pyramidCNN
+from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiGRU_Dense, get_pyramidCNN, get_BiGRU_Max_Avg_Pool
 import numpy as np
 
 
@@ -75,6 +76,13 @@ def get_model(model_name, embedding_matrix, params):
                                               dropout_rate=params.get(model_name).get('dropout_rate'),
                                               num_of_filters=params.get(model_name).get('num_of_filters'),
                                               filter_sizes=params.get(model_name).get('filter_sizes'))
+  elif model_name == "BiGRU_max_avg_pool_concat":
+    get_model_func = lambda: get_BiGRU_Max_Avg_Pool(embedding_matrix=embedding_matrix,
+                                                    num_classes=6,
+                                                    sequence_length=params.get(model_name).get('sequence_length'),
+                                                    recurrent_units=params.get(model_name).get('recurrent_units'),
+                                                    dense_size=params.get(model_name).get('dense_dim'),
+                                                    dropout_rate=params.get(model_name).get('dropout'))
 
   else:
     # ============= BiGRU =============
