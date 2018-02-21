@@ -6,7 +6,7 @@ from keras import regularizers
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda
 from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D, Concatenate
-from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda, GlobalAveragePooling1D, Concatenate
+from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda, GlobalAveragePooling1D, Concatenate, GRU
 from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D
 
 from keras.layers import Bidirectional, Dropout, CuDNNGRU, CuDNNLSTM, Reshape
@@ -80,10 +80,8 @@ def get_BiGRU_Attention(embedding_matrix, num_classes, sequence_length, recurren
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
                                 trainable=False)(input_layer)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(embedding_layer)
-    # x = Dropout(dropout_rate)(x)
     x = BatchNormalization()(x)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(x)
-    # x = Attention(sequence_length)(x)
     x = AttentionWeightedAverage()(x)
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
@@ -106,12 +104,22 @@ def get_2BiGRU_BN(embedding_matrix, num_classes, sequence_length, recurrent_unit
 
 def get_2BiGRU_GlobMaxPool(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
     input_layer = Input(shape=(sequence_length,))
-    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
-                                trainable=False)(input_layer)
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(embedding_layer)
     x = Dropout(dropout_rate)(x)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(x)
-    # x = Dropout(dropout_rate)(x)
+    x = GlobalMaxPooling1D()(x)
+    x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+def get_2BiGRU_rec_dropout_glob_max_pool(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(embedding_layer)
+    x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(x)
     x = GlobalMaxPooling1D()(x)
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
