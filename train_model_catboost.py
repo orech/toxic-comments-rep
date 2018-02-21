@@ -97,7 +97,7 @@ def main(*kargs, **kwargs):
     train_labels = kwargs['train_labels']
     test_clean = kwargs['test_clean']
     embeds_clean = kwargs['embeds_clean']
-    result_path = './outputs/'
+    result_path = './catboost/'
 
 
     if not os.path.exists(result_path):
@@ -198,10 +198,13 @@ def main(*kargs, **kwargs):
             test_predictions = model_tr.predict(test_x, batch_size=params.get(model_name).get('batch_size'))
             save_predictions(test_df, test_predictions, target_labels, model_name)
 
+            test_predictions_path = os.path.join(result_path, "test_predictions_{0}.npy".format(model_name))
+            np.save(test_predictions_path, test_predictions)
+
             # ============== Saving trained parameters ================
-            logger.info('Saving model parameters...')
-            model_path = os.path.join(result_path, "{0}_weights.npy".format(model_name))
-            np.save(model_path, model.get_weights())
+            # logger.info('Saving model parameters...')
+            # model_path = os.path.join(result_path, "{0}_weights.npy".format(model_name))
+            # np.save(model_path, model.get_weights())
 
             # ============== Postprocessing ===============
 
@@ -209,18 +212,23 @@ def main(*kargs, **kwargs):
 
             # ============== Saving predictions ==============
 
-            logger.info('Saving predictions...')
-            test_ids = test_df["id"].values
-            test_ids = test_ids.reshape((len(test_ids), 1))
-
-            test_predicts = pd.DataFrame(data=test_predictions, columns=target_labels)
-            test_predicts["id"] = test_ids
-            test_predicts = test_predicts[["id"] + target_labels]
-            submit_path = os.path.join(result_path, "{0}.submit".format(model_name))
-            test_predicts.to_csv(submit_path, index=False)
+            # logger.info('Saving predictions...')
+            # test_ids = test_df["id"].values
+            # test_ids = test_ids.reshape((len(test_ids), 1))
+            #
+            # test_predicts = pd.DataFrame(data=test_predictions, columns=target_labels)
+            # test_predicts["id"] = test_ids
+            # test_predicts = test_predicts[["id"] + target_labels]
+            # submit_path = os.path.join(result_path, "catboost_{0}.submit".format(model_name))
+            # test_predicts.to_csv(submit_path, index=False)
 
     x_meta = [val_predictions[model_alias] for model_alias in sorted(val_predictions.keys())]
-    x_meta = np.array(x_meta).T
+    x_meta = np.array(x_meta)
+    x_meta_path = os.path.join(result_path, "x_meta.npy")
+    np.save(x_meta_path, x_meta)
+
+    y_meta_path = os.path.join(result_path, "y_meta.npy")
+    np.save(y_meta_path, y_eval_nn)
 
     x_train_meta, x_val_meta, y_train_meta, y_val_meta = train_test_split(x_meta, y_eval_nn, test_size=0.20,
                                                                           random_state=42)
@@ -233,6 +241,7 @@ def main(*kargs, **kwargs):
                           )
     meta_model.fit(x_train_meta, y_train_meta, eval_set=(x_val_meta, y_val_meta), use_best_model=True)
     y_hat_meta = meta_model.predict_proba(x_val_meta)
+
     metrics_meta = get_metrics(y_val_meta, y_hat_meta, target_labels)
     logger.info('Applying models...')
     test_cols = []

@@ -162,28 +162,30 @@ def get_pyramidCNN(embedding_matrix, num_classes, sequence_length, dropout_rate,
 
 
     pre_activation_conv0_1 = Lambda(lambda x: K.relu(x))(region_embedding)
-    drop0_1 = Dropout(dropout_rate)(pre_activation_conv0_1)
-    conv0_1 = Conv1D(num_of_filters, filter_size, padding='same')(drop0_1)
+    #drop0_1 = Dropout(dropout_rate)(pre_activation_conv0_1)
+    conv0_1 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv0_1)
+    bn0_1 = BatchNormalization()(conv0_1)
 
-    pre_activation_conv0_2 = Lambda(lambda x: K.relu(x))(conv0_1)
-    drop0_2 = Dropout(dropout_rate)(pre_activation_conv0_2)
-    conv0_2 = Conv1D(num_of_filters, filter_size, padding='same')(drop0_2)
-
-    shortcut0 = Lambda(lambda x: x[0] + x[1])([conv0_2, region_embedding])
+    pre_activation_conv0_2 = Lambda(lambda x: K.relu(x))(bn0_1)
+    #drop0_1 = Dropout(dropout_rate)(pre_activation_conv0_2)
+    conv0_2 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv0_2)
+    bn0_2 = BatchNormalization()(conv0_2)
+    shortcut0 = Lambda(lambda x: x[0] + x[1])([bn0_2, region_embedding])
     res = shortcut0
 
     for i in range(num_of_blocks):
         pooled = MaxPooling1D(pool_size=3, strides=2)(res)
 
         pre_activation_conv1 = Lambda(lambda x: K.relu(x))(pooled)
-        drop1 = Dropout(dropout_rate)(pre_activation_conv1)
-        conv1 = Conv1D(num_of_filters, filter_size, padding='same')(drop1)
+        #drop1 = Dropout(dropout_rate)(pre_activation_conv1)
+        conv1 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv1)
+        drop1 = BatchNormalization()(conv1)
+        pre_activation_conv2 = Lambda(lambda x: K.relu(x))(drop1)
+        #drop2 = Dropout(dropout_rate)(pre_activation_conv2)
+        conv2 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv2)
+        drop2 = BatchNormalization()(conv2)
 
-        pre_activation_conv2 = Lambda(lambda x: K.relu(x))(conv1)
-        drop2 = Dropout(dropout_rate)(pre_activation_conv2)
-        conv2 = Conv1D(num_of_filters, filter_size, padding='same')(drop2)
-
-        shortcut = Lambda(lambda x: x[0] + x[1])([conv2, pooled])
+        shortcut = Lambda(lambda x: x[0] + x[1])([drop2, pooled])
 
         res = shortcut
 
@@ -194,6 +196,52 @@ def get_pyramidCNN(embedding_matrix, num_classes, sequence_length, dropout_rate,
 
     model = Model(inputs=input_layer, outputs=output_layer)
     return model
+
+
+def get_pyramid_attention_CNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_size, num_of_blocks, dense_size=128, l2_weight_decay=0.0001):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1],
+                                weights=[embedding_matrix], trainable=False)(input_layer)
+
+    region_embedding = Conv1D(num_of_filters, filter_size)(embedding_layer)
+
+
+    pre_activation_conv0_1 = Lambda(lambda x: K.relu(x))(region_embedding)
+    #drop0_1 = Dropout(dropout_rate)(pre_activation_conv0_1)
+    conv0_1 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv0_1)
+
+    pre_activation_conv0_2 = Lambda(lambda x: K.relu(x))(conv0_1)
+    #drop0_1 = Dropout(dropout_rate)(pre_activation_conv0_2)
+    conv0_2 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv0_2)
+
+    shortcut0 = Lambda(lambda x: x[0] + x[1])([conv0_2, region_embedding])
+    res = shortcut0
+
+    for i in range(num_of_blocks):
+        pooled = MaxPooling1D(pool_size=3, strides=2)(res)
+
+        pre_activation_conv1 = Lambda(lambda x: K.relu(x))(pooled)
+        #drop1 = Dropout(dropout_rate)(pre_activation_conv1)
+        conv1 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv1)
+
+        pre_activation_conv2 = Lambda(lambda x: K.relu(x))(conv1)
+        #drop2 = Dropout(dropout_rate)(pre_activation_conv2)
+        conv2 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv2)
+
+        shortcut = Lambda(lambda x: x[0] + x[1])([conv2, pooled])
+
+        res = shortcut
+
+    attend = AttentionWeightedAverage()(res)
+    # globalPooled = GlobalMaxPooling1D()(res)
+    drop = Dropout(dropout_rate)(attend)
+    #dense = Dense(dense_size,activation='relu', kernel_regularizer=regularizers.l2(l2_weight_decay))(drop)
+    output_layer = Dense(num_classes, activation="sigmoid", kernel_regularizer=regularizers.l2(l2_weight_decay))(drop)
+
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
 
 
 def get__original_pyramidCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_size, num_of_blocks, l2_weight_decay=0.0001):
