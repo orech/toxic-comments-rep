@@ -137,7 +137,8 @@ def main(*kargs, **kwargs):
     # ============= Load params of models =============
     params = Params(config)
     models = params.get('models')
-    val_predictions = {}
+    val_predictions = []
+    test_predictions = []
 
     # ============ Train models =============
     for model_name in models:
@@ -194,12 +195,12 @@ def main(*kargs, **kwargs):
                                     optimizer=params.get(model_name).get('optimizer'),
                                     logger=logger)
 
-            val_predictions[model_name] = model.predict(x_eval_nn)
-            test_predictions = model_tr.predict(test_x, batch_size=params.get(model_name).get('batch_size'))
-            save_predictions(test_df, test_predictions, target_labels, model_name)
+            val_predictions.append(model.predict(x_eval_nn))
+            test_predictions.append(model_tr.predict(test_x, batch_size=params.get(model_name).get('batch_size')))
+            # save_predictions(test_df, test_predictions, target_labels, model_name)
 
-            test_predictions_path = os.path.join(result_path, "test_predictions_{0}.npy".format(model_name))
-            np.save(test_predictions_path, test_predictions)
+            # test_predictions_path = os.path.join(result_path, "test_predictions_{0}.npy".format(model_name))
+            # np.save(test_predictions_path, test_predictions)
 
             # ============== Saving trained parameters ================
             # logger.info('Saving model parameters...')
@@ -222,16 +223,11 @@ def main(*kargs, **kwargs):
             # submit_path = os.path.join(result_path, "catboost_{0}.submit".format(model_name))
             # test_predicts.to_csv(submit_path, index=False)
 
-    x_meta = [val_predictions[model_alias] for model_alias in sorted(val_predictions.keys())]
-    x_meta = np.array(x_meta)
-    x_meta_path = os.path.join(result_path, "x_meta.npy")
-    np.save(x_meta_path, x_meta)
 
-    y_meta_path = os.path.join(result_path, "y_meta.npy")
-    np.save(y_meta_path, y_eval_nn)
+    x_test = np.concatenate(test_predictions, axis=1)
+    x_meta = np.concatenate(val_predictions, axis=1)
 
-    x_train_meta, x_val_meta, y_train_meta, y_val_meta = train_test_split(x_meta, y_eval_nn, test_size=0.20,
-                                                                          random_state=42)
+    x_train_meta, x_val_meta, y_train_meta, y_val_meta = train_test_split(x_meta, y_eval_nn, test_size=0.20, random_state=42)
     meta_model = CatBoost(target_labels,
                           loss_function='Logloss',
                           iterations=1000,
@@ -242,26 +238,23 @@ def main(*kargs, **kwargs):
     meta_model.fit(x_train_meta, y_train_meta, eval_set=(x_val_meta, y_val_meta), use_best_model=True)
     y_hat_meta = meta_model.predict_proba(x_val_meta)
 
-    metrics_meta = get_metrics(y_val_meta, y_hat_meta, target_labels)
+    #metrics_meta = get_metrics(y_val_meta, y_hat_meta, target_labels)
     logger.info('Applying models...')
-    test_cols = []
-    for model_alias in sorted(val_predictions.keys()):
-        for label in target_labels:
-            test_cols.append('{}_{}'.format(model_alias, label))
-    x_test = test_df[test_cols].values
 
-    preds = meta_model.predict_proba(x_test)
-    for i, label in enumerate(target_labels):
-        test_df[label] = preds[:, i]
+    final_predictions = np.array(meta_model.predict_proba(x_test)).T
+
 
 
     # ====Save results====
     logger.info('Saving results...')
-    submit_path = os.path.join(result_path, "{0}.cat".format('catboost'))
-    test_df[['id', 'toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']].to_csv(submit_path,
-                                                                                                    index=False,
-                                                                                                    header=True)
-    #test_df.to_csv('{}_tmp'.format(result_fname), index=False, header=True)
+    test_ids = test_df["id"].values
+    test_ids = test_ids.reshape((len(test_ids), 1))
+
+    test_predicts = pd.DataFrame(data=final_predictions, columns=target_labels)
+    test_predicts["id"] = test_ids
+    test_predicts = test_predicts[["id"] + target_labels]
+    submit_path = os.path.join(result_path, "{0}.csv".format('catboost'))
+    test_predicts.to_csv(submit_path, index=False)
 
 
 if __name__=='__main__':
