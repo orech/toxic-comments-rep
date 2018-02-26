@@ -110,11 +110,41 @@ def replace_short_forms(phrase):
 
     return phrase
 
+
+def normalize(s):
+    """
+    Given a text, cleans and normalizes it. Feel free to add your own stuff.
+    Taken from:https://www.kaggle.com/mschumacher/using-fasttext-models-for-robust-embeddings
+    """
+    s = s.lower()
+    # Replace ips
+    s = re.sub(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', ' _ip_ ', s)
+    # Isolate punctuation
+    s = re.sub(r'([\'\"\.\(\)\!\?\-\\\/\,])', r' \1 ', s)
+    # Remove some special characters
+    s = re.sub(r'([\;\:\|•«\n])', ' ', s)
+    # Replace numbers and symbols with language
+    s = s.replace('&', ' and ')
+    s = s.replace('@', ' at ')
+    s = s.replace('0', ' zero ')
+    s = s.replace('1', ' one ')
+    s = s.replace('2', ' two ')
+    s = s.replace('3', ' three ')
+    s = s.replace('4', ' four ')
+    s = s.replace('5', ' five ')
+    s = s.replace('6', ' six ')
+    s = s.replace('7', ' seven ')
+    s = s.replace('8', ' eight ')
+    s = s.replace('9', ' nine ')
+    return s
+
+
 def tokenize_sentences_adv(sentences, words_dict):
     tokenized_sentences = []
     for sentence in tqdm(sentences):
         if hasattr(sentence, "decode"):
             sentence = sentence.decode("utf-8")
+        sentence = normalize(sentence + '\n')
         tokens = nltk.tokenize.word_tokenize(sentence.lower())
         # replace n't 'd 've 'm by not would have am respectively
         tokens = [replace_short_forms(token) for token in tokens]

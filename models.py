@@ -17,6 +17,8 @@ from keras import backend as K
 from keras.engine.topology import Layer
 from keras import initializers, regularizers, constraints
 
+from sru import SRU
+
 
 
 def get_cnn(embedding_matrix, num_classes, embed_dim, max_seq_len, num_filters=64, l2_weight_decay=0.0001, dropout_val=0.5, dense_dim=32, add_sigmoid=True):
@@ -108,6 +110,19 @@ def get_2BiGRU_GlobMaxPool(embedding_matrix, num_classes, sequence_length, recur
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(embedding_layer)
     x = Dropout(dropout_rate)(x)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(x)
+    x = GlobalMaxPooling1D()(x)
+    x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+def get_2BiSRU_GlobMaxPool(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    x = Bidirectional(SRU(units=recurrent_units ,recurrent_dropout=0.3))(embedding_layer)
+    x = Dropout(dropout_rate)(x)
+    x = Bidirectional(SRU(units=recurrent_units ,recurrent_dropout=0.3))(x)
     x = GlobalMaxPooling1D()(x)
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)

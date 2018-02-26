@@ -60,14 +60,14 @@ def main(*kargs, **kwargs):
     # ==== Create logger ====
     logger = Logger(logging.getLogger(), logger_fname)
 
-    # ====Load data====
+    # ==== Load data ====
     logger.info('Loading data...')
     train_df = load_data(train_fname)
     test_df = load_data(test_fname)
 
     target_labels = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
 
-    # ====Tokenize comment texts====
+    # ==== Tokenize comment texts ====
     logger.info('Replacing nans and tokenizing texts...')
     list_sentences_train = train_df['comment_text'].fillna(NAN_WORD).values
     list_sentences_test = test_df['comment_text'].fillna(NAN_WORD).values
@@ -96,14 +96,14 @@ def main(*kargs, **kwargs):
     embedding_list, embedding_word_dict, oov_words = clear_embedding_list(embedding_list, embedding_word_dict, word_dict)
 
     # ======== Clean oov words and save them =========
-    # oov_cleaned = []
-    # ad = AlphabetDetector()
-    # with open('oov_words.txt', 'wt+') as oov_file:
-    #     for w in oov_words:
-    #         if ad.only_alphabet_chars(w, "LATIN") and re.match(r'^[A-Za-z]+$', w) and (len(w) <= 15):
-    #             oov_cleaned.append(w)
-    #             oov_file.write(w+'\n')
-    # oov_file.close()
+    oov_cleaned = []
+    ad = AlphabetDetector()
+    with open('oov_words.txt', 'wt+') as oov_file:
+        for w in oov_words:
+            if ad.only_alphabet_chars(w, "LATIN") and re.match(r'^[A-Za-z]+$', w) and (len(w) <= 15):
+                oov_cleaned.append(w)
+                oov_file.write(w+'\n')
+    oov_file.close()
 
 
     embedding_word_dict[UNKNOWN_WORD] = len(embedding_word_dict)

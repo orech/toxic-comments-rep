@@ -4,7 +4,7 @@ from math import pow, floor
 from keras import optimizers, callbacks, backend, losses
 from keras.callbacks import EarlyStopping, LearningRateScheduler, Callback
 from sklearn.metrics import log_loss, roc_auc_score, accuracy_score
-from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiGRU_Dense, get_BiGRU_Max_Avg_Pool_concat, get_2BiGRU_rec_dropout_glob_max_pool, get_pyramidCNN, get_simpleCNN, get__original_pyramidCNN, get_pyramid_attention_CNN, get_pyramid_gated_CNN
+from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiGRU_Dense, get_BiGRU_Max_Avg_Pool_concat, get_2BiGRU_rec_dropout_glob_max_pool, get_pyramidCNN, get_simpleCNN, get__original_pyramidCNN, get_pyramid_attention_CNN, get_pyramid_gated_CNN, get_2BiSRU_GlobMaxPool
 import numpy as np
 
 
@@ -109,6 +109,13 @@ def get_model(model_name, embedding_matrix, params):
                                               num_of_blocks=params.get(model_name).get('num_of_blocks'),
                                               dense_size=params.get(model_name).get('dense_size'),
                                               l2_weight_decay=0.0001)
+  elif model_name == 'get_2BiSRU_GlobMaxPool':
+    get_model_func = lambda: get_2BiSRU_GlobMaxPool(embedding_matrix=embedding_matrix,
+                                                    num_classes=6,
+                                                    sequence_length=params.get(model_name).get('sequence_length'),
+                                                    recurrent_units=params.get(model_name).get('recurrent_units'),
+                                                    dense_size=params.get(model_name).get('dense_dim'),
+                                                    dropout_rate=params.get(model_name).get('dropout'))
 
   else:
     # ============= BiGRU =============
