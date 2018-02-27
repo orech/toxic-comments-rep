@@ -3,8 +3,9 @@ from scipy import sparse
 from sklearn.feature_extraction.text import TfidfVectorizer
 from layers import AttentionWeightedAverage, Attention
 from keras import regularizers
+
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda
+from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda, Reshape
 from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D, Concatenate
 from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda, GlobalAveragePooling1D, Concatenate, GRU
 from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D
@@ -373,10 +374,12 @@ def get_simpleCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, 
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1],
                                 weights=[embedding_matrix], trainable=False)(input_layer)
 
+    embedding_layer_reshaped = Reshape((500, 300, 1))(embedding_layer)
     pooled_outputs = []
     for i,filter_size in enumerate(filter_sizes):
-        conv = Conv1D(num_of_filters, filter_size, activation='relu')(embedding_layer)
-        pooled = GlobalMaxPooling1D()(conv)
+        # conv = Conv1D(num_of_filters, filter_size, activation='relu')(embedding_layer)
+        conv = Conv2D(filters=num_of_filters, kernel_size=(embedding_matrix.shape[0], filter_size), activation='relu', padding='same')(embedding_layer_reshaped)
+        pooled = GlobalMaxPooling2D()(conv)
         pooled_outputs.append(pooled)
     concat = Concatenate(1)(pooled_outputs)
     drop = Dropout(dropout_rate)(concat)
