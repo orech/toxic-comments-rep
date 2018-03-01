@@ -164,7 +164,7 @@ def abs_kullback_leibler(y_true, y_pred):
   return kl
 
 
-def _train_model(model, batch_size, train_x, train_y, val_x, val_y, optimizer, logger):
+def _train_model(model, batch_size, train_x, train_y, val_x, val_y, opt, logger):
   best_loss = -1
   best_roc_auc = -1
   best_weights = None
@@ -177,15 +177,18 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, optimizer, l
   callbacks_list = [terminate_on_nan, history]
 
   # ============= Initialize optimizer =============
-  if optimizer == 'adam':
+  if opt == 'adam':
       optimizer = optimizers.Adam()
       logger.info('Initialize Adam optimizer')
-  elif optimizer == 'nadam':
+  elif opt == 'nadam':
       optimizer = optimizers.Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
       logger.info('Initialize Nadam optimizer')
-  elif optimizer == 'rmsprop':
+  elif opt == 'rmsprop':
       optimizer = optimizers.RMSprop(clipvalue=1, clipnorm=1)
       logger.info('Initialize RMSprop optimizer')
+  elif opt == 'adagrad':
+    optimizer = optimizers.Adagrad(lr=0.01, epsilon=None, decay=0.0)
+    logger.info('Initialize AdaGrad optimizer')
   else:
       optimizer = optimizers.RMSprop(clipvalue=1, clipnorm=1)
       logger.info('Initialize RMSprop optimizer')
