@@ -10,7 +10,7 @@ from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, In
 from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda, GlobalAveragePooling1D, Concatenate, GRU
 from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D
 
-from keras.layers import Bidirectional, Dropout, CuDNNGRU, CuDNNLSTM, Reshape
+from keras.layers import Bidirectional, Dropout, CuDNNGRU, CuDNNLSTM, Reshape, Flatten
 from keras.models import Model
 from keras.backend import cast
 
@@ -365,25 +365,39 @@ def get__original_pyramidCNN(embedding_matrix, num_classes, sequence_length, dro
     return model
 
 
+# def get_simpleCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_sizes):
+#     input_layer = Input(shape=(sequence_length,))
+#     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1],
+#                                 weights=[embedding_matrix], trainable=False)(input_layer)
+#
+#     pooled_outputs = []
+#     for i, filter_size in enumerate(filter_sizes):
+#         conv = Conv1D(num_of_filters, filter_size, activation='relu')(embedding_layer)
+#         pooled = GlobalMaxPooling1D()(conv)
+#         pooled_outputs.append(pooled)
+#     concat = Concatenate(1)(pooled_outputs)
+#     drop = Dropout(dropout_rate)(concat)
+#     output_layer = Dense(num_classes, activation="sigmoid")(drop)
+#     model = Model(inputs=input_layer, outputs=output_layer)
+#     return model
 
 
-
-
-def get_simpleCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_sizes):
+def get_simpleCNN_conv2d(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_sizes):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1],
                                 weights=[embedding_matrix], trainable=False)(input_layer)
-
     embedding_layer_reshaped = Reshape((500, 300, 1))(embedding_layer)
     pooled_outputs = []
     for i,filter_size in enumerate(filter_sizes):
-        # conv = Conv1D(num_of_filters, filter_size, activation='relu')(embedding_layer)
-        conv = Conv2D(filters=num_of_filters, kernel_size=(embedding_matrix.shape[0], filter_size), activation='relu', padding='same')(embedding_layer_reshaped)
-        pooled = GlobalMaxPooling2D()(conv)
-        pooled_outputs.append(pooled)
+        conv = Conv2D(filters=num_of_filters, kernel_size=(filter_size, embedding_matrix.shape[1]), activation='relu', padding='valid')(embedding_layer_reshaped)
+        pooled = MaxPooling2D(pool_size=(conv.get_shape().as_list()[1], 1))(conv)
+        flat_pool = Flatten()(pooled)
+        pooled_outputs.append(flat_pool)
     concat = Concatenate(1)(pooled_outputs)
     drop = Dropout(dropout_rate)(concat)
-    output_layer = Dense(num_classes, activation="sigmoid")(drop)
+    fc_1 = Dense(128, activation='relu')(drop)
+    fc_2 = Dense(64, activation='relu')(fc_1)
+    output_layer = Dense(num_classes, activation="sigmoid")(fc_2)
     model = Model(inputs=input_layer, outputs=output_layer)
     return model
 

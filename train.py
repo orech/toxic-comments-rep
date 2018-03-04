@@ -4,7 +4,7 @@ from math import pow, floor
 from keras import optimizers, callbacks, backend, losses
 from keras.callbacks import EarlyStopping, LearningRateScheduler, Callback
 from sklearn.metrics import log_loss, roc_auc_score, accuracy_score
-from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiGRU_Dense, get_BiGRU_Max_Avg_Pool_concat, get_2BiGRU_rec_dropout_glob_max_pool, get_pyramidCNN, get_simpleCNN, get__original_pyramidCNN, get_pyramid_attention_CNN, get_pyramid_gated_CNN, get_2BiSRU_GlobMaxPool
+from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiGRU_Dense, get_BiGRU_Max_Avg_Pool_concat, get_2BiGRU_rec_dropout_glob_max_pool, get_pyramidCNN, get_simpleCNN, get__original_pyramidCNN, get_pyramid_attention_CNN, get_pyramid_gated_CNN, get_2BiSRU_GlobMaxPool, get_simpleCNN_conv2d
 import numpy as np
 
 
@@ -85,6 +85,14 @@ def get_model(model_name, embedding_matrix, params):
                                               dropout_rate=params.get(model_name).get('dropout_rate'),
                                               num_of_filters=params.get(model_name).get('num_of_filters'),
                                               filter_sizes=params.get(model_name).get('filter_sizes'))
+  elif model_name == 'get_simpleCNN_conv2d':
+      get_model_func = lambda: get_simpleCNN_conv2d(embedding_matrix=embedding_matrix,
+                                              num_classes=6,
+                                              sequence_length=params.get(model_name).get('sequence_length'),
+                                              dropout_rate=params.get(model_name).get('dropout_rate'),
+                                              num_of_filters=params.get(model_name).get('num_of_filters'),
+                                              filter_sizes=params.get(model_name).get('filter_sizes'))
+
   elif model_name == "BiGRU_max_avg_pool_concat":
     get_model_func = lambda: get_BiGRU_Max_Avg_Pool_concat(embedding_matrix=embedding_matrix,
                                                     num_classes=6,
