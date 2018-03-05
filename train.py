@@ -242,11 +242,12 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, opt, logger)
     #     break
 
   model.set_weights(best_weights)
-  return model
+  return model, best_loss
 
 def train_folds(X, y, fold_count, batch_size, get_model_func, optimizer, logger):
     fold_size = len(X) // fold_count
     models = []
+    losses = []
     for fold_id in range(0, fold_count):
       fold_start = fold_size * fold_id
       fold_end = fold_start + fold_size
@@ -260,10 +261,12 @@ def train_folds(X, y, fold_count, batch_size, get_model_func, optimizer, logger)
       val_x = X[fold_start:fold_end]
       val_y = y[fold_start:fold_end]
 
-      model = _train_model(get_model_func(), batch_size, train_x, train_y, val_x, val_y, optimizer, logger)
+      model, loss = _train_model(get_model_func(), batch_size, train_x, train_y, val_x, val_y, optimizer, logger)
       models.append(model)
-
-    return models
+      losses.append(loss)
+    best_model_index = losses.index(min(losses))
+    best_model = models[best_model_index]
+    return best_model
 
 
 def train(x_train, y_train, model, batch_size, num_epochs, learning_rate=0.001, early_stopping_delta=0.0, early_stopping_epochs=10, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=5, logger=None):
