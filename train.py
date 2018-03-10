@@ -117,7 +117,7 @@ def get_model(model_name, embedding_matrix, params):
                                               num_of_blocks=params.get(model_name).get('num_of_blocks'),
                                               dense_size=params.get(model_name).get('dense_size'),
                                               l2_weight_decay=0.0001)
-  elif model_name == 'get_2BiSRU_GlobMaxPool':
+  elif model_name == '2BiSRU_GlobMaxPool':
     get_model_func = lambda: get_2BiSRU_GlobMaxPool(embedding_matrix=embedding_matrix,
                                                     num_classes=6,
                                                     sequence_length=params.get(model_name).get('sequence_length'),
@@ -272,6 +272,30 @@ def train_folds(X, y, fold_count, batch_size, get_model_func, optimizer, logger)
       models.append(model)
 
     return models
+
+
+def train_folds_catboost(X, y, fold_count, batch_size, get_model_func, optimizer, logger):
+    fold_size = len(X) // fold_count
+    models = []
+    val_predictions = []
+    for fold_id in range(0, fold_count):
+      fold_start = fold_size * fold_id
+      fold_end = fold_start + fold_size
+
+      if fold_id == fold_size - 1:
+        fold_end = len(X)
+
+      train_x = np.concatenate([X[:fold_start], X[fold_end:]])
+      train_y = np.concatenate([y[:fold_start], y[fold_end:]])
+
+      val_x = X[fold_start:fold_end]
+      val_y = y[fold_start:fold_end]
+
+      model = _train_model(get_model_func(), batch_size, train_x, train_y, val_x, val_y, optimizer, logger)
+      val_predictions.append(model.predict(val_x))
+      models.append(model)
+
+    return models, val_predictions
 
 
 def train(x_train, y_train, model, batch_size, num_epochs, learning_rate=0.001, early_stopping_delta=0.0, early_stopping_epochs=10, use_lr_stratagy=True, lr_drop_koef=0.66, epochs_to_drop=5, logger=None):
