@@ -186,7 +186,7 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, opt, logger)
 
   # ============= Initialize optimizer =============
   if opt == 'adam':
-      optimizer = optimizers.Adam(lr=0.0005)
+      optimizer = optimizers.Adam()
       logger.info('Initialize Adam optimizer')
   elif opt == 'nadam':
       optimizer = optimizers.Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
