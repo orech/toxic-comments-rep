@@ -48,6 +48,7 @@ def get_kwargs(kwargs):
     parser.add_argument('--train-clean', dest='train_clean', action='store', help='/path/to/save_train_clean_file', type=str, default='data/train.clean.npy')
     parser.add_argument('--test-clean', dest='test_clean', action='store', help='/path/to/save_test_clean_file', type=str, default='data/test.clean.npy')
     parser.add_argument('--embeds-clean', dest='embeds_clean', action='store', type=str, default=None)
+    parser.add_argument('--embeds-type', dest='embeds_type', action='store', type=str, default='ft_comm_crawl')
     parser.add_argument('--train-labels', dest='train_labels', action='store', type=str, default=None)
     for key, value in iteritems(parser.parse_args().__dict__):
         kwargs[key] = value
@@ -61,6 +62,7 @@ def main(*kargs, **kwargs):
     test_fname = kwargs['test']
     result_fname = kwargs['output']
     embeds_fname = kwargs['embeds']
+    embeds_type = kwargs['embeds_type']
     logger_fname = kwargs['logger']
     warm_start = kwargs['warm_start']
     model_warm_start = [model.lower() for model in kwargs['model_warm_start']]
@@ -126,10 +128,10 @@ def main(*kargs, **kwargs):
             logger.debug('Predicting results...')
             test_predicts_list = []
             for fold_id, model in enumerate(models):
-                model_path = os.path.join(result_path, "{1}_{0}_weights.npy".format(fold_id, model_name))
+                model_path = os.path.join(result_path, "{1}_{0}_{2}_weights.npy".format(fold_id, model_name, embeds_type))
                 np.save(model_path, model.get_weights())
 
-                test_predicts_path = os.path.join(result_path, "{1}_test_predicts{0}.npy".format(fold_id, model_name))
+                test_predicts_path = os.path.join(result_path, "{1}_{2}_test_predicts{0}.npy".format(fold_id, model_name, embeds_type))
                 test_predictions = model.predict(test_x, batch_size=batch_size)
                 test_predicts_list.append(test_predictions)
                 np.save(test_predicts_path, test_predictions)
@@ -148,7 +150,7 @@ def main(*kargs, **kwargs):
             test_predictions = pd.DataFrame(data=test_predictions, columns=target_labels)
             test_predictions["id"] = test_ids
             test_predictions = test_predictions[["id"] + target_labels]
-            submit_path = os.path.join(result_path, "{0}_folds.submit".format(model_name))
+            submit_path = os.path.join(result_path, "{0}_{1}_folds.submit".format(model_name, embeds_type))
             test_predictions.to_csv(submit_path, index=False)
 
         else:
@@ -161,13 +163,13 @@ def main(*kargs, **kwargs):
                                     train_y=y_train_nn,
                                     val_x=x_eval_nn,
                                     val_y=y_eval_nn,
-                                    optimizer=params.get(model_name).get('optimizer'),
+                                    opt=params.get(model_name).get('optimizer'),
                                     logger=logger)
             test_predictions = model_tr.predict(test_x, batch_size=params.get(model_name).get('batch_size'))
 
             # ============== Saving trained parameters ================
             logger.info('Saving model parameters...')
-            model_path = os.path.join(result_path, "{0}_weights.npy".format(model_name))
+            model_path = os.path.join(result_path, "{0}_{1}_weights.npy".format(model_name, embeds_type))
             np.save(model_path, model.get_weights())
 
             # ============== Postprocessing ===============
@@ -183,7 +185,7 @@ def main(*kargs, **kwargs):
             test_predicts = pd.DataFrame(data=test_predictions, columns=target_labels)
             test_predicts["id"] = test_ids
             test_predicts = test_predicts[["id"] + target_labels]
-            submit_path = os.path.join(result_path, "{0}.submit".format(model_name))
+            submit_path = os.path.join(result_path, "{0}_{1}.submit".format(model_name, embeds_type))
             test_predicts.to_csv(submit_path, index=False)
 
 

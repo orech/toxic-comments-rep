@@ -9,11 +9,11 @@ TEST_CLEAN="/home/anya/toxic-comments-rep/data/test.clean.npy"
 
 EMBEDS_FILE="/home/anya/toxic-comments-rep/data/crawl-300d-2M.vec"
 # fasttext, glove or word2vec
-EMBEDS_TYPE="fasttext"
+EMBEDS_TYPE="ft_comm_crawl"
 EMBEDS_CLEAN="/home/anya/toxic-comments-rep/data/embeds.clean.npy"
 
 SWEAR_FILE="/home/anya/toxic-comments-rep/data/swear_words.csv"
 WRONG_WORDS_FILE="/home/anya/toxic-comments-rep/data/correct_words.csv"
 
 
-$PY_PATH preprocessing.py --train=$TRAIN_DATA --test=$TEST_DATA --swear-words=$SWEAR_FILE --embeds=$EMBEDS_FILE --embeds-clean=$EMBEDS_CLEAN --wrong-words=$WRONG_WORDS_FILE --train-clean=$TRAIN_CLEAN --test-clean=$TEST_CLEAN
+$PY_PATH preprocessing.py --train=$TRAIN_DATA --test=$TEST_DATA --swear-words=$SWEAR_FILE --embeds=$EMBEDS_FILE --embeds-type=$EMBEDS_TYPE --embeds-clean=$EMBEDS_CLEAN --wrong-words=$WRONG_WORDS_FILE --train-clean=$TRAIN_CLEAN --test-clean=$TEST_CLEAN

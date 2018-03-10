@@ -5,7 +5,7 @@ from layers import AttentionWeightedAverage, Attention
 from keras import regularizers
 
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda, Reshape
+from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda, Reshape, SpatialDropout1D
 from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D, Concatenate
 from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda, GlobalAveragePooling1D, Concatenate, GRU
 from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D
@@ -82,9 +82,9 @@ def get_BiGRU_Attention(embedding_matrix, num_classes, sequence_length, recurren
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
                                 trainable=False)(input_layer)
-    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(embedding_layer)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(embedding_layer)
     x = BatchNormalization()(x)
-    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(x)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(x)
     x = AttentionWeightedAverage()(x)
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
@@ -121,10 +121,10 @@ def get_2BiGRU_GlobMaxPool(embedding_matrix, num_classes, sequence_length, recur
 def get_2BiSRU_GlobMaxPool(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
-    x = Bidirectional(SRU(units=recurrent_units ,recurrent_dropout=0.3))(embedding_layer)
+    x, _ = Bidirectional(SRU(units=recurrent_units ,recurrent_dropout=0.4, implementation=0))(embedding_layer)
     x = Dropout(dropout_rate)(x)
-    x = Bidirectional(SRU(units=recurrent_units ,recurrent_dropout=0.3))(x)
-    x = GlobalMaxPooling1D()(x)
+    # x = Bidirectional(SRU(units=recurrent_units ,recurrent_dropout=0.3))(x)
+    # x = GlobalMaxPooling1D()(x)
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
     model = Model(inputs=input_layer, outputs=output_layer)
@@ -176,6 +176,7 @@ def get_BiGRU_2dConv_2dMaxPool(embedding_matrix, num_classes, sequence_length):
     drop_output = Dropout(0.3)(output_layer)
     model = Model(inputs=input_layer, outputs=drop_output)
     return model
+
 
 def get_pyramidCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_size, num_of_blocks, dense_size=128, l2_weight_decay=0.0001):
     input_layer = Input(shape=(sequence_length,))
@@ -323,7 +324,6 @@ def get_pyramid_attention_CNN(embedding_matrix, num_classes, sequence_length, dr
 
     model = Model(inputs=input_layer, outputs=output_layer)
     return model
-
 
 
 

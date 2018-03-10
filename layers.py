@@ -7,6 +7,29 @@ sys.path.append(dirname(dirname(__file__)))
 from keras import initializers
 from keras.engine import InputSpec, Layer
 from keras import backend as K
+from keras.engine.topology import Layer
+import numpy as np
+
+
+class DiSAN(Layer):
+  def __init__(self, output_dim, hidden_dim, return_mask=False, **kwargs):
+    self.output_dim = output_dim
+    self.supports_masking = True
+    self.return_mask = return_mask
+    self.hidden_dim = hidden_dim
+    super(DiSAN, self).__init__(**kwargs)
+
+  def build(self, input_shape):
+    # Create a trainable weight variable for this layer.
+    self.W_h = self.add_weight(name='W_h', shape=(input_shape[1], self.hidden_dim), initializer='uniform', trainable=True)
+    self.b_h = self.add_weight(name='b_h', shape=())
+    super(DiSAN, self).build(input_shape)  # Be sure to call this somewhere!
+
+  def call(self, x):
+    return K.dot(x, self.kernel)
+
+  def compute_output_shape(self, input_shape):
+    return (input_shape[0], self.output_dim)
 
 
 class AttentionWeightedAverage(Layer):
