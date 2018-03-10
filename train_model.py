@@ -161,7 +161,7 @@ def main(*kargs, **kwargs):
                                     train_y=y_train_nn,
                                     val_x=x_eval_nn,
                                     val_y=y_eval_nn,
-                                    optimizer=params.get(model_name).get('optimizer'),
+                                    opt=params.get(model_name).get('optimizer'),
                                     logger=logger)
             test_predictions = model_tr.predict(test_x, batch_size=params.get(model_name).get('batch_size'))
 

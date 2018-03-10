@@ -23,7 +23,7 @@ except ImportError:
 from embed_utils import load_data, Embeds, Logger, clear_embedding_list, read_embedding_list
 from data_utils import calc_text_uniq_words, clean_texts, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids
 from models import get_cnn, get_lstm, get_concat_model, save_predictions, get_tfidf, get_most_informative_features, get_2BiGRU, get_BiGRU_2dConv_2dMaxPool, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool
-from train import train, continue_train, Params, _train_model, train_folds, get_model
+from train import train, continue_train, Params, _train_model, train_folds, get_model, train_folds_catboost
 from metrics import calc_metrics, get_metrics, print_metrics
 
 
@@ -127,107 +127,41 @@ def main(*kargs, **kwargs):
     num_classes = len(target_labels)
 
 
-
-    # ==== Splitting training data ====
-    x_train_nn, x_eval_nn, y_train_nn, y_eval_nn, train_idxs, eval_idxs = split_data(train_x, train_y, eval_size=0.1, shuffle=True, random_state=42)
-    logger.debug('X shape = {}'.format(np.shape(x_train_nn)))
-
-
-
     # ============= Load params of models =============
     params = Params(config)
     models = params.get('models')
-    val_predictions = []
-    test_predictions = []
+    val_predictions_list = []
+    test_predictions_list = []
 
     # ============ Train models =============
     for model_name in models:
         model_func = get_model(model_name, embedding_matrix, params)
-        if params.get(model_name).get('folding'):
-            # =========== Training on folds ============
-            batch_size = params.get(model_name).get('batch_size')
+        # =========== Training on folds ============
+        batch_size = params.get(model_name).get('batch_size')
 
-            logger.debug('Starting {0} training on folds...'.format(model_name))
-            models = train_folds(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, model_func, params.get(model_name).get('optimizer'), logger=logger)
+        logger.debug('Starting {0} training on folds...'.format(model_name))
+        models, val_predictions = train_folds_catboost(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, model_func, params.get(model_name).get('optimizer'), logger=logger)
+        val_predictions = np.concatenate(val_predictions, axis=0)
+        val_predictions_list.append(val_predictions)
 
-            if not os.path.exists(result_path):
-                os.mkdir(result_path)
+        logger.debug('Predicting results...')
+        test_predictions = []
+        for fold_id, model in enumerate(models):
+            test_predictions.append(model.predict(test_x, batch_size=batch_size))
+        final_test_predictions = np.ones(test_predictions[0].shape)
+        for fold_predict in test_predictions:
+            final_test_predictions *= fold_predict
+        final_test_predictions **= (1. / len(test_predictions))
+        test_predictions_list.append(final_test_predictions)
 
-            logger.debug('Predicting results...')
-            test_predicts_list = []
-            for fold_id, model in enumerate(models):
-                model_path = os.path.join(result_path, "{1}_{0}_weights.npy".format(fold_id, model_name))
-                np.save(model_path, model.get_weights())
+    x_test = np.concatenate(test_predictions_list, axis=1)
+    test_predicts_path = os.path.join(result_path, "catboost_x_test.npy")
+    np.save(test_predicts_path, x_test)
+    x_meta = np.concatenate(val_predictions_list, axis=1)
+    val_predicts_path = os.path.join(result_path, "catboost_x_train.npy")
+    np.save(val_predicts_path, x_meta)
 
-                test_predicts_path = os.path.join(result_path, "{1}_test_predicts{0}.npy".format(fold_id, model_name))
-
-                test_predictions = model.predict(test_x, batch_size=batch_size)
-                test_predicts_list.append(test_predictions)
-                np.save(test_predicts_path, test_predictions)
-
-            test_predictions = np.ones(test_predicts_list[0].shape)
-            for fold_predict in test_predicts_list:
-                test_predictions *= fold_predict
-
-            # test_predictions **= (1. / len(test_predicts_list))
-            # test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
-
-            logger.info('Saving prediction...')
-            test_ids = test_df["id"].values
-            test_ids = test_ids.reshape((len(test_ids), 1))
-
-            test_predictions = pd.DataFrame(data=test_predictions, columns=target_labels)
-            test_predictions["id"] = test_ids
-            test_predictions = test_predictions[["id"] + target_labels]
-            submit_path = os.path.join(result_path, "{0}_folds.submit".format(model_name))
-            test_predictions.to_csv(submit_path, index=False)
-
-        else:
-            # ============ Single model training =============
-            logger.info('Training single {0} training...'.format(model_name))
-            model = model_func()
-            model_tr = _train_model(model,
-                                    batch_size=params.get(model_name).get('batch_size'),
-                                    train_x=x_train_nn,
-                                    train_y=y_train_nn,
-                                    val_x=x_eval_nn,
-                                    val_y=y_eval_nn,
-                                    optimizer=params.get(model_name).get('optimizer'),
-                                    logger=logger)
-
-            val_predictions.append(model.predict(x_eval_nn))
-            test_predictions.append(model_tr.predict(test_x, batch_size=params.get(model_name).get('batch_size')))
-            # save_predictions(test_df, test_predictions, target_labels, model_name)
-
-            # test_predictions_path = os.path.join(result_path, "test_predictions_{0}.npy".format(model_name))
-            # np.save(test_predictions_path, test_predictions)
-
-            # ============== Saving trained parameters ================
-            # logger.info('Saving model parameters...')
-            # model_path = os.path.join(result_path, "{0}_weights.npy".format(model_name))
-            # np.save(model_path, model.get_weights())
-
-            # ============== Postprocessing ===============
-
-            # test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
-
-            # ============== Saving predictions ==============
-
-            # logger.info('Saving predictions...')
-            # test_ids = test_df["id"].values
-            # test_ids = test_ids.reshape((len(test_ids), 1))
-            #
-            # test_predicts = pd.DataFrame(data=test_predictions, columns=target_labels)
-            # test_predicts["id"] = test_ids
-            # test_predicts = test_predicts[["id"] + target_labels]
-            # submit_path = os.path.join(result_path, "catboost_{0}.submit".format(model_name))
-            # test_predicts.to_csv(submit_path, index=False)
-
-
-    x_test = np.concatenate(test_predictions, axis=1)
-    x_meta = np.concatenate(val_predictions, axis=1)
-
-    x_train_meta, x_val_meta, y_train_meta, y_val_meta = train_test_split(x_meta, y_eval_nn, test_size=0.20, random_state=42)
+    x_train_meta, x_val_meta, y_train_meta, y_val_meta = train_test_split(x_meta, train_y[:x_meta.shape[0]], test_size=0.20, random_state=42)
     meta_model = CatBoost(target_labels,
                           loss_function='Logloss',
                           iterations=1000,
@@ -236,14 +170,12 @@ def main(*kargs, **kwargs):
                           rsm=1
                           )
     meta_model.fit(x_train_meta, y_train_meta, eval_set=(x_val_meta, y_val_meta), use_best_model=True)
-    y_hat_meta = meta_model.predict_proba(x_val_meta)
+    #y_hat_meta = meta_model.predict_proba(x_val_meta)
 
     #metrics_meta = get_metrics(y_val_meta, y_hat_meta, target_labels)
     logger.info('Applying models...')
 
     final_predictions = np.array(meta_model.predict_proba(x_test)).T
-
-
 
     # ====Save results====
     logger.info('Saving results...')
@@ -253,7 +185,7 @@ def main(*kargs, **kwargs):
     test_predicts = pd.DataFrame(data=final_predictions, columns=target_labels)
     test_predicts["id"] = test_ids
     test_predicts = test_predicts[["id"] + target_labels]
-    submit_path = os.path.join(result_path, "{0}.csv".format('catboost'))
+    submit_path = os.path.join(result_path, "{0}.csv".format('catboost_folds'))
     test_predicts.to_csv(submit_path, index=False)
 
 
