@@ -39,6 +39,7 @@ def get_kwargs(kwargs):
     parser.add_argument('--train-clean', dest='train_clean', action='store', help='/path/to/save_train_clean_file', type=str, default='data/train_clean.npy')
     parser.add_argument('--test-clean', dest='test_clean', action='store', help='/path/to/save_test_clean_file', type=str, default='data/results/test_clean.npy')
     parser.add_argument('--embeds-clean', dest='embeds_clean', action='store', help='/path/to/save_embeds_clean_file', type=str, default='data/results/embeds_clean.npy')
+    parser.add_argument('--embeds-type', dest='embeds_type', action='store', type=str, default='ft_comm_crawl')
     for key, value in iteritems(parser.parse_args().__dict__):
         kwargs[key] = value
 
@@ -54,6 +55,7 @@ def main(*kargs, **kwargs):
     test_clean = kwargs['test_clean']
     embeds_clean = kwargs['embeds_clean']
     embeds_fname = kwargs['embeds']
+    embeds_type = kwargs['embeds_type']
     train_labels = 'data/train.labels.npy'
 
 
