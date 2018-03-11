@@ -139,8 +139,8 @@ def main(*kargs, **kwargs):
             test_predictions = np.ones(test_predicts_list[0].shape)
             for fold_predict in test_predicts_list:
                 test_predictions *= fold_predict
-
-            # test_predictions **= (1. / len(test_predicts_list))
+            if params.get(model_name).get('norm_folds'):
+                test_predictions **= (1. / len(test_predicts_list))
             # test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
 
             logger.info('Saving prediction...')

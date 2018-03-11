@@ -53,11 +53,13 @@ def get_model(model_name, embedding_matrix, params):
     get_model_func = lambda: get_pyramidCNN(embedding_matrix=embedding_matrix,
                                         num_classes=6,
                                         sequence_length=params.get(model_name).get('sequence_length'),
-                                        dropout_rate=params.get(model_name).get('dropout_rate'),
                                         num_of_filters=params.get(model_name).get('num_of_filters'),
                                         filter_size=params.get(model_name).get('filter_size'),
                                         num_of_blocks=params.get(model_name).get('num_of_blocks'),
-                                        dense_size=params.get(model_name).get('dense_size'),
+                                        embedding_dropout=params.get(model_name).get('embedding_dropout'),
+                                        conv_dropout=params.get(model_name).get('conv_dropout'),
+                                        dense_dropout=params.get(model_name).get('dense_dropout'),
+                                        use_bn=params.get(model_name).get('use_bn'),
                                         l2_weight_decay=0.0001)
   elif model_name == 'original_pyramidCNN':
       get_model_func = lambda: get__original_pyramidCNN(embedding_matrix=embedding_matrix,

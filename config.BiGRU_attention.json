@@ -10,6 +10,7 @@
     "sequence_length": 500,
     "recurrent_units": 128,
     "dense_dim": 64,
-    "batch_size": 256
+    "batch_size": 256,
+    "norm_folds": true
   }
 }
