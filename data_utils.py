@@ -38,12 +38,11 @@ def read_wrong_words(fname):
     wrong_word_dict = {}
     with open(fname) as f:
         for line in f:
-            line = line.rstrip()
-            line = re.sub(' +', ' ', line)
-            line = line.split()
+            line = line.strip('\n')
+            line = line.split(',')
             if len(line) < 2:
                 continue
-            wrong_word_dict[line[0]] = ' '.join(line[1:])
+            wrong_word_dict[line[0]] = line[1]
     return wrong_word_dict
 
 
@@ -120,7 +119,7 @@ def normalize(s):
     # Replace ips
     s = re.sub(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', ' _ip_ ', s)
     # Isolate punctuation
-    s = re.sub(r'([\'\"\.\(\)\!\?\-\\\/\,])', r' \1 ', s)
+    s = re.sub(r'([\"\.\(\)\!\?\-\\\/\,])', r' \1 ', s)
     # Remove some special characters
     s = re.sub(r'([\;\:\|•«\n])', ' ', s)
     # Replace numbers and symbols with language
@@ -136,22 +135,61 @@ def normalize(s):
     s = s.replace('7', ' seven ')
     s = s.replace('8', ' eight ')
     s = s.replace('9', ' nine ')
+
+    # replace emoji
+    emoji_dict = {
+        " yay!": " good ",
+        " yay ": " good ",
+        " yaay ": " good ",
+        " yaaay ": " good ",
+        " yaaaay ": " good ",
+        " yaaaaay ": " good ",
+        ":')": " sad ",
+        ":-(": " bad ",
+        ":(": " bad ",
+        ":-s": " bad ",
+        "&lt;3": " heart ",
+        ":d": " smile ",
+        ":p": " smile ",
+        ":dd": " smile ",
+        "8)": " smile ",
+        ":-)": " smile ",
+        ":)": " smile ",
+        ";)": " smile ",
+        "(-:": " smile ",
+        "(:": " smile ",
+        ":/": " worry ",
+        ":&gt;": " angry ",
+        ":s": " sad "
+    }
+
+    for key, val in emoji_dict.items():
+        s = s.replace(key, val)
+
     return s
 
+def correct_orth(text, fname):
+    wrong_word_dict = read_wrong_words(fname)
+    for wrong, right in wrong_word_dict.items():
+        text = text.replace(wrong, right)
+    return text
 
-def tokenize_sentences_adv(sentences, words_dict):
+
+def tokenize_sentences_adv(sentences, words_dict, wrong_word_file=None):
     tokenized_sentences = []
     for sentence in tqdm(sentences):
         if hasattr(sentence, "decode"):
             sentence = sentence.decode("utf-8")
-        sentence = normalize(sentence + '\n')
+        # sentence = normalize(sentence + '\n')
+        if wrong_word_file is not None:
+            sentence = correct_orth(sentence, wrong_word_file)
         tokens = nltk.tokenize.word_tokenize(sentence.lower())
         # replace n't 'd 've 'm by not would have am respectively
         tokens = [replace_short_forms(token) for token in tokens]
         tokens2 = []
         # split words and punctuation
         for token in tokens:
-            tokens2.extend(re.findall(r"[\w]+|[\\(\-)=.,!?;:/%$#@<>_~`|*№\"]+", token))
+            tokens2.extend(re.findall(r"[\w]+|[\\(\-\)\=\.\,\!\?\;\:\/\%\$\#\@\<\>\_\~\`\|\*\№\"]+", token))
         tokens3 = []
         # split words connected by underscore
         for token in tokens2:
