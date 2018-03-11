@@ -82,7 +82,7 @@ def get_BiGRU_Attention(embedding_matrix, num_classes, sequence_length, recurren
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
                                 trainable=False)(input_layer)
-    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(embedding_layer)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(embedding_layer_dp)
     x = BatchNormalization()(x)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(x)
     x = AttentionWeightedAverage()(x)
@@ -390,6 +390,7 @@ def get_simpleCNN_conv2d(embedding_matrix, num_classes, sequence_length, dropout
 def get_simpleCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_sizes, l2_weight_decay=0.0001):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    embedding_layer = SpatialDropout1D(rate=0.3)(embedding_layer)
     pooled_outputs = []
     for i, filter_size in enumerate(filter_sizes):
         conv = Conv1D(num_of_filters, filter_size, activation='relu')(embedding_layer)
