@@ -82,9 +82,9 @@ def get_BiGRU_Attention(embedding_matrix, num_classes, sequence_length, recurren
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
                                 trainable=False)(input_layer)
-    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(embedding_layer)
+    x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(embedding_layer)
     x = BatchNormalization()(x)
-    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(x)
+    x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(x)
     x = AttentionWeightedAverage()(x)
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
