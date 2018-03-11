@@ -8,7 +8,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda, Reshape, SpatialDropout1D
 from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D, Concatenate
 from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda, GlobalAveragePooling1D, Concatenate, GRU
-from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D
+from keras.layers import Embedding, Conv1D, MaxPooling1D, GlobalMaxPooling1D, Input, GlobalMaxPooling2D, SpatialDropout1D
 
 from keras.layers import Bidirectional, Dropout, CuDNNGRU, CuDNNLSTM, Reshape, Flatten
 from keras.models import Model
@@ -82,6 +82,7 @@ def get_BiGRU_Attention(embedding_matrix, num_classes, sequence_length, recurren
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
                                 trainable=False)(input_layer)
+
     x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(embedding_layer)
     x = BatchNormalization()(x)
     x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(x)
@@ -189,51 +190,48 @@ def get_BiGRU_2dConv_2dMaxPool(embedding_matrix, num_classes, sequence_length):
     return model
 
 
-def get_pyramidCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_size, num_of_blocks, dense_size=128, l2_weight_decay=0.0001):
+def get_pyramidCNN(embedding_matrix, num_classes, sequence_length, num_of_filters,
+                   filter_size, num_of_blocks, embedding_dropout, conv_dropout,
+                   dense_dropout, use_bn, l2_weight_decay=0.0001):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1],
                                 weights=[embedding_matrix], trainable=False)(input_layer)
 
-    region_embedding = Conv1D(num_of_filters, filter_size)(embedding_layer)
+    embedding_drop = SpatialDropout1D(embedding_dropout)(embedding_layer)
+    region_embedding = Conv1D(num_of_filters, filter_size)(embedding_drop)
 
-
-    pre_activation_conv0_1 = Lambda(lambda x: K.relu(x))(region_embedding)
-    #drop0_1 = Dropout(dropout_rate)(pre_activation_conv0_1)
-    conv0_1 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv0_1)
-    drop0_1 = Dropout(dropout_rate)(conv0_1)
-    #bn0_1 = BatchNormalization()(conv0_1)
-
-    pre_activation_conv0_2 = Lambda(lambda x: K.relu(x))(drop0_1)
-    #drop0_1 = Dropout(dropout_rate)(pre_activation_conv0_2)
-    conv0_2 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv0_2)
-    drop0_2 = Dropout(dropout_rate)(conv0_2)
-    #bn0_2 = BatchNormalization()(conv0_2)
-    shortcut0 = Lambda(lambda x: x[0] + x[1])([drop0_2, region_embedding])
+    conv0_1 = conv_block(region_embedding, num_of_filters, filter_size, conv_dropout, use_bn)
+    conv0_2 = conv_block(conv0_1, num_of_filters, filter_size, conv_dropout, use_bn)
+    shortcut0 = Lambda(lambda x: x[0] + x[1])([conv0_2, region_embedding])
     res = shortcut0
 
     for i in range(num_of_blocks):
         pooled = MaxPooling1D(pool_size=3, strides=2)(res)
 
-        pre_activation_conv1 = Lambda(lambda x: K.relu(x))(pooled)
-        #drop1 = Dropout(dropout_rate)(pre_activation_conv1)
-        conv1 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv1)
-        drop1 = BatchNormalization()(conv1)
-        pre_activation_conv2 = Lambda(lambda x: K.relu(x))(drop1)
-        #drop2 = Dropout(dropout_rate)(pre_activation_conv2)
-        conv2 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv2)
-        drop2 = BatchNormalization()(conv2)
+        conv1 = conv_block(pooled, num_of_filters, filter_size, conv_dropout, use_bn)
+        conv2 = conv_block(conv1, num_of_filters, filter_size, conv_dropout, use_bn)
 
-        shortcut = Lambda(lambda x: x[0] + x[1])([drop2, pooled])
+        shortcut = Lambda(lambda x: x[0] + x[1])([conv2, pooled])
 
         res = shortcut
 
     globalPooled = GlobalMaxPooling1D()(res)
-    drop = Dropout(dropout_rate)(globalPooled)
-    #dense = Dense(dense_size,activation='relu', kernel_regularizer=regularizers.l2(l2_weight_decay))(drop)
+    drop = Dropout(dense_dropout)(globalPooled)
     output_layer = Dense(num_classes, activation="sigmoid", kernel_regularizer=regularizers.l2(l2_weight_decay))(drop)
 
     model = Model(inputs=input_layer, outputs=output_layer)
     return model
+
+
+def conv_block(x, num_of_filters, filter_size, conv_dropout, use_bn):
+    x = Lambda(lambda x: K.relu(x))(x)
+    x = Conv1D(num_of_filters, filter_size, padding='same')(x)
+    if use_bn:
+        x = BatchNormalization()(x)
+    x = Dropout(conv_dropout)(x)
+    return x
+
+
 
 
 def get_pyramid_gated_CNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_size, num_of_blocks, dense_size=128, l2_weight_decay=0.0001):
@@ -345,7 +343,6 @@ def get__original_pyramidCNN(embedding_matrix, num_classes, sequence_length, dro
 
     region_embedding = Conv1D(num_of_filters, filter_size)(embedding_layer)
 
-
     pre_activation_conv0_1 = Lambda(lambda x: K.relu(x))(region_embedding)
     conv0_1 = Conv1D(num_of_filters, filter_size, padding='same')(pre_activation_conv0_1)
 
@@ -401,6 +398,7 @@ def get_simpleCNN_conv2d(embedding_matrix, num_classes, sequence_length, dropout
 def get_simpleCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_sizes, l2_weight_decay=0.0001):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    embedding_layer = SpatialDropout1D(rate=0.3)(embedding_layer)
     pooled_outputs = []
     for i, filter_size in enumerate(filter_sizes):
         conv = Conv1D(num_of_filters, filter_size, activation='relu')(embedding_layer)
