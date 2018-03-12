@@ -1,7 +1,7 @@
 from scipy import sparse
 
 from sklearn.feature_extraction.text import TfidfVectorizer
-from layers import AttentionWeightedAverage, Attention
+from layers import AttentionWeightedAverage, Attention, DiSAN
 from keras import regularizers
 
 from keras.models import Sequential
@@ -82,6 +82,7 @@ def get_BiGRU_Attention(embedding_matrix, num_classes, sequence_length, recurren
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
                                 trainable=False)(input_layer)
+
     x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(embedding_layer)
     x = BatchNormalization()(x)
     x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(x)
@@ -122,7 +123,7 @@ def get_2BiSRU_GlobMaxPool(embedding_matrix, num_classes, sequence_length, recur
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
     x, _ = Bidirectional(SRU(units=recurrent_units ,recurrent_dropout=0.4, implementation=0))(embedding_layer)
-    x = Dropout(dropout_rate)(x)
+    # x = Dropout(dropout_rate)(x)
     # x = Bidirectional(SRU(units=recurrent_units ,recurrent_dropout=0.3))(x)
     # x = GlobalMaxPooling1D()(x)
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
@@ -141,6 +142,17 @@ def get_2BiGRU_rec_dropout_glob_max_pool(embedding_matrix, num_classes, sequence
     output_layer = Dense(num_classes, activation="sigmoid")(x)
     model = Model(inputs=input_layer, outputs=output_layer)
     return model
+
+
+def get_diSAN(embedding_matrix, num_classes, sequence_length):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+
+    x = DiSAN(is_train=None, wd=0., keep_prob=0.5)(embedding_layer)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
 
 
 def get_BiGRU_Max_Avg_Pool_concat(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
@@ -386,6 +398,7 @@ def get_simpleCNN_conv2d(embedding_matrix, num_classes, sequence_length, dropout
 def get_simpleCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_sizes, l2_weight_decay=0.0001):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    embedding_layer = SpatialDropout1D(rate=0.3)(embedding_layer)
     pooled_outputs = []
     for i, filter_size in enumerate(filter_sizes):
         conv = Conv1D(num_of_filters, filter_size, activation='relu')(embedding_layer)
