@@ -1,7 +1,7 @@
 {
     "models": ["pyramidCNN"],
     "pyramidCNN": {
-            "folding": false,
+            "folding": true,
             "num_folds": 10,
             "num_epochs": 10,
             "sequence_length": 500,

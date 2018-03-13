@@ -150,6 +150,7 @@ class SRU(Recurrent):
                  dropout=0.,
                  recurrent_dropout=0.,
                  implementation=2,
+                 return_sequences=False,
                  **kwargs):
         super(SRU, self).__init__(**kwargs)
         self.units = units
@@ -178,6 +179,7 @@ class SRU(Recurrent):
                            InputSpec(shape=(None, self.units))]
 
         self.implementation = implementation
+        self.return_sequences = return_sequences
 
     def build(self, input_shape):
         if isinstance(input_shape, list):

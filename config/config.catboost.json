@@ -1,0 +1,35 @@
+{
+    "models": ["2BiGRU_rec_dropout_glob_max_pool", "BiGRU_attention", "original_pyramidCNN"],
+    "2BiGRU_rec_dropout_glob_max_pool": {
+            "optimizer": "nadam",
+	        "num_folds": 10,
+            "num_epochs": 10,
+            "sequence_length": 500,
+            "recurrent_units": 128,
+            "dense_dim": 64,
+            "dropout":0.5,
+            "batch_size": 256
+    },
+    "BiGRU_attention": {
+            "optimizer": "nadam",
+            "num_folds": 10,
+            "num_epochs": 10,
+            "sequence_length": 500,
+            "recurrent_units": 128,
+            "dense_dim": 64,
+            "batch_size": 256
+    },
+    "original_pyramidCNN": {
+            "num_folds": 10,
+            "num_epochs": 10,
+            "sequence_length": 500,
+            "dropout_rate": 0.5,
+            "filter_size": 3,
+            "num_of_filters": 250,
+            "num_of_blocks": 3,
+            "batch_size": 100,
+            "optimizer": "adam"
+    }
+
+}
+

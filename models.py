@@ -78,14 +78,49 @@ def get_BiGRU_Dense(embedding_matrix, num_classes, sequence_length, recurrent_un
     return model
 
 
-def get_BiGRU_Attention(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
+def get_BiGRU_Attention(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, spatial_dropout_rate=0.5):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
                                 trainable=False)(input_layer)
 
-    x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(embedding_layer)
+    spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(spat_dropout)
     x = BatchNormalization()(x)
-    x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(x)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(x)
+    x = AttentionWeightedAverage()(x)
+    x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+
+def get_BiLSTM_Attention(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, spatial_dropout_rate=0.5):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
+                                trainable=False)(input_layer)
+
+    spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
+    x = Bidirectional(CuDNNLSTM(recurrent_units, return_sequences=True))(spat_dropout)
+    x = BatchNormalization()(x)
+    x = Bidirectional(CuDNNLSTM(recurrent_units, return_sequences=True))(x)
+    x = AttentionWeightedAverage()(x)
+    x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+
+def get_BiSRU_Attention(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, spatial_dropout_rate=0.5):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
+                                trainable=False)(input_layer)
+
+    spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
+    x = Bidirectional(SRU(recurrent_units, return_sequences=True))(spat_dropout)
+    x = BatchNormalization()(x)
+    x = Bidirectional(SRU(recurrent_units, return_sequences=True))(x)
     x = AttentionWeightedAverage()(x)
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
@@ -119,29 +154,99 @@ def get_2BiGRU_GlobMaxPool(embedding_matrix, num_classes, sequence_length, recur
     return model
 
 
-def get_2BiSRU_GlobMaxPool(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
+def get_2BiSRU_rec_dropout_GlobMaxPool(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, recurrent_dropout_rate=0.2):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
-    x, _ = Bidirectional(SRU(units=recurrent_units ,recurrent_dropout=0.4, implementation=0))(embedding_layer)
-    # x = Dropout(dropout_rate)(x)
-    # x = Bidirectional(SRU(units=recurrent_units ,recurrent_dropout=0.3))(x)
-    # x = GlobalMaxPooling1D()(x)
-    x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
-    output_layer = Dense(num_classes, activation="sigmoid")(x)
-    model = Model(inputs=input_layer, outputs=output_layer)
-    return model
-
-
-def get_2BiGRU_rec_dropout_glob_max_pool(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
-    input_layer = Input(shape=(sequence_length,))
-    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
-    x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(embedding_layer)
-    x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=dropout_rate))(x)
+    x = Bidirectional(SRU(units=recurrent_units ,recurrent_dropout=recurrent_dropout_rate, implementation=0, return_sequences=True))(embedding_layer)
+    x = Dropout(dropout_rate)(x)
+    x = Bidirectional(SRU(units=recurrent_units ,recurrent_dropout=recurrent_dropout_rate, implementation=0, return_sequences=True))(x)
+    x = Dropout(dropout_rate)(x)
     x = GlobalMaxPooling1D()(x)
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
+    x = Dropout(dropout_rate)(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
     model = Model(inputs=input_layer, outputs=output_layer)
     return model
+
+
+def get_2BiGRU_rec_dropout(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, recurrent_dropout_rate=0.2):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=recurrent_dropout_rate))(embedding_layer)
+    x = Dropout(dropout_rate)(x)
+    x = Bidirectional(GRU(recurrent_units, return_sequences=True, recurrent_dropout=recurrent_dropout_rate))(x)
+    x = Dropout(dropout_rate)(x)
+    x = GlobalMaxPooling1D()(x)
+    x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
+    x = Dropout(dropout_rate)(x)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+def get_2BiLSTM_rec_dropout(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, recurrent_dropout_rate=0.2):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+
+    x = Bidirectional(LSTM(recurrent_units, return_sequences=True, recurrent_dropout=recurrent_dropout_rate))(embedding_layer)
+    x = Dropout(dropout_rate)(x)
+    x = Bidirectional(LSTM(recurrent_units, return_sequences=True, recurrent_dropout=recurrent_dropout_rate))(x)
+    x = Dropout(dropout_rate)(x)
+    x = GlobalMaxPooling1D()(x)
+    x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
+    x = Dropout(dropout_rate)(x)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+def get_2BiSRU_spat_dropout(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, spatial_dropout_rate=0.5):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
+    x = Bidirectional(SRU(units=recurrent_units, implementation=0, return_sequences=True))(spat_dropout)
+    x = Dropout(dropout_rate)(x)
+    x = Bidirectional(SRU(units=recurrent_units, implementation=0, return_sequences=True))(x)
+    x = Dropout(dropout_rate)(x)
+    x = GlobalMaxPooling1D()(x)
+    x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
+    x = Dropout(dropout_rate)(x)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+def get_2BiGRU_spat_dropout(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, spatial_dropout_rate =0.5):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(spat_dropout)
+    x = Dropout(dropout_rate)(x)
+    x = Bidirectional(GRU(recurrent_units, return_sequences=True))(x)
+    x = Dropout(dropout_rate)(x)
+    x = GlobalMaxPooling1D()(x)
+    x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
+    x = Dropout(dropout_rate)(x)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+def get_2BiLSTM_spat_dropout(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, spatial_dropout_rate =0.5):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
+    x = Bidirectional(CuDNNLSTM(recurrent_units, return_sequences=True))(spat_dropout)
+    x = Dropout(dropout_rate)(x)
+    x = Bidirectional(CuDNNLSTM(recurrent_units, return_sequences=True))(x)
+    x = Dropout(dropout_rate)(x)
+    x = GlobalMaxPooling1D()(x)
+    x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
+    x = Dropout(dropout_rate)(x)
+    output_layer = Dense(num_classes, activation="sigmoid")(x)
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
 
 
 def get_diSAN(embedding_matrix, num_classes, sequence_length):
@@ -162,14 +267,13 @@ def get_BiGRU_Max_Avg_Pool_concat(embedding_matrix, num_classes, sequence_length
     x = Dropout(dropout_rate)(x)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(x)
     x = Dropout(dropout_rate)(x)
-
     x_1 = Lambda(lambda a: a[:, -1, :])(x)
     x_2 = GlobalMaxPooling1D()(x)
     x_3 = GlobalAveragePooling1D()(x)
-
     x = Concatenate()([x_1, x_2, x_3])
-    x = Dropout(dropout_rate)(x)
+    # x = Dropout(dropout_rate)(x)
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
+    x = Dropout(dropout_rate)(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
     model = Model(inputs=input_layer, outputs=output_layer)
     return model
