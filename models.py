@@ -114,9 +114,9 @@ def get_BiLSTM_Attention(embedding_matrix, num_classes, sequence_length, recurre
 
 def get_BiSRU_Attention(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, spatial_dropout_rate=0.5):
     input_layer = Input(shape=(sequence_length,))
+    print(embedding_matrix)
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
                                 trainable=False)(input_layer)
-
     spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
     x = Bidirectional(SRU(recurrent_units, return_sequences=True))(spat_dropout)
     x = BatchNormalization()(x)
