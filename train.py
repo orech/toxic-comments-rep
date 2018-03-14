@@ -4,7 +4,7 @@ from math import pow, floor
 from keras import optimizers, callbacks, backend, losses
 from keras.callbacks import EarlyStopping, LearningRateScheduler, Callback
 from sklearn.metrics import log_loss, roc_auc_score, accuracy_score
-from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiGRU_Dense, get_BiGRU_Max_Avg_Pool_concat, get_2BiGRU_rec_dropout_glob_max_pool, get_pyramidCNN, get_simpleCNN, get__original_pyramidCNN, get_pyramid_attention_CNN, get_pyramid_gated_CNN, get_2BiSRU_GlobMaxPool, get_simpleCNN_conv2d, get_diSAN
+from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiLSTM_Attention, get_BiSRU_Attention, get_BiGRU_Dense, get_BiGRU_Max_Avg_Pool_concat, get_2BiGRU_rec_dropout, get_pyramidCNN, get_simpleCNN, get__original_pyramidCNN, get_pyramid_attention_CNN, get_pyramid_gated_CNN, get_2BiSRU_rec_dropout_GlobMaxPool, get_simpleCNN_conv2d, get_diSAN, get_2BiLSTM_rec_dropout, get_2BiSRU_spat_dropout, get_2BiGRU_spat_dropout, get_2BiLSTM_spat_dropout
 import numpy as np
 
 
@@ -12,45 +12,64 @@ def step_decay(initial_lr, lr_drop_koef, epochs_to_drop, epoch):
     return initial_lr * pow(lr_drop_koef, floor((1 + epoch) / epochs_to_drop))
 
 def get_model(model_name, embedding_matrix, params):
-  print(model_name)
-  if model_name == '2BiGRU':
-    get_model_func = lambda: get_2BiGRU(embedding_matrix=embedding_matrix,
+    print(model_name)
+    if model_name == '2BiGRU':
+        get_model_func = lambda: get_2BiGRU(embedding_matrix=embedding_matrix,
                                         num_classes=6,
                                         sequence_length=params.get(model_name).get('sequence_length'),
                                         dense_size=params.get(model_name).get('dense_dim'),
                                         recurrent_units=params.get(model_name).get('recurrent_units'))
-  elif model_name == '2BiGRU_2dConv_2dMaxPool':
-    get_model_func = lambda: get_BiGRU_2dConv_2dMaxPool(embedding_matrix=embedding_matrix,
+    elif model_name == '2BiGRU_2dConv_2dMaxPool':
+        get_model_func = lambda: get_BiGRU_2dConv_2dMaxPool(embedding_matrix=embedding_matrix,
                                                         num_classes=6,
                                                         sequence_length=params.get(model_name).get('sequence_length'))
 
-  elif model_name == '2BiGRU_BN':
-    get_model_func = lambda: get_2BiGRU_BN(embedding_matrix=embedding_matrix,
+    elif model_name == '2BiGRU_BN':
+        get_model_func = lambda: get_2BiGRU_BN(embedding_matrix=embedding_matrix,
                                            num_classes=6,
                                            sequence_length=params.get(model_name).get('sequence_length'),
                                            recurrent_units=params.get(model_name).get('recurrent_units'),
                                            dense_size=params.get(model_name).get('dense_dim'))
-  elif model_name == '2BiGRU_GlobMaxPool':
-    get_model_func = lambda: get_2BiGRU_GlobMaxPool(embedding_matrix=embedding_matrix,
+    elif model_name == '2BiGRU_GlobMaxPool':
+        get_model_func = lambda: get_2BiGRU_GlobMaxPool(embedding_matrix=embedding_matrix,
                                                     num_classes=6,
                                                     sequence_length=params.get(model_name).get('sequence_length'),
                                                     recurrent_units=params.get(model_name).get('recurrent_units'),
                                                     dense_size=params.get(model_name).get('dense_dim'),
                                                     dropout_rate=params.get(model_name).get('dropout'))
-  elif model_name == 'BiGRU_attention':
-    get_model_func = lambda: get_BiGRU_Attention(embedding_matrix=embedding_matrix,
+    elif model_name == 'BiGRU_attention':
+        get_model_func = lambda: get_BiGRU_Attention(embedding_matrix=embedding_matrix,
                                         num_classes=6,
                                         sequence_length=params.get(model_name).get('sequence_length'),
                                         dense_size=params.get(model_name).get('dense_dim'),
-                                        recurrent_units=params.get(model_name).get('recurrent_units'))
-  elif model_name == 'BiGRU_Dense':
-    get_model_func = lambda: get_BiGRU_Dense(embedding_matrix=embedding_matrix,
+                                        recurrent_units=params.get(model_name).get('recurrent_units'),
+                                        dropout_rate=params.get(model_name).get('dropout'),
+                                        spatial_dropout_rate=params.get(model_name).get('spatial_dropout'))
+    elif model_name == 'BiLSTM_attention':
+        get_model_func = lambda: get_BiLSTM_Attention(embedding_matrix=embedding_matrix,
+                                                     num_classes=6,
+                                                     sequence_length=params.get(model_name).get('sequence_length'),
+                                                        dense_size=params.get(model_name).get('dense_dim'),
+                                                     recurrent_units=params.get(model_name).get('recurrent_units'),
+                                                     dropout_rate=params.get(model_name).get('dropout'),
+                                                     spatial_dropout_rate=params.get(model_name).get('spatial_dropout'))
+    elif model_name == 'BiSRU_attention':
+        get_model_func = lambda: get_BiSRU_Attention(embedding_matrix=embedding_matrix,
+                                                     num_classes=6,
+                                                     sequence_length=params.get(model_name).get('sequence_length'),
+                                                     dense_size=params.get(model_name).get('dense_dim'),
+                                                     recurrent_units=params.get(model_name).get('recurrent_units'),
+                                                     dropout_rate=params.get(model_name).get('dropout'),
+                                                     spatial_dropout_rate=params.get(model_name).get('spatial_dropout'))
+
+    elif model_name == 'BiGRU_Dense':
+        get_model_func = lambda: get_BiGRU_Dense(embedding_matrix=embedding_matrix,
                                         num_classes=6,
                                         sequence_length=params.get(model_name).get('sequence_length'),
                                         dense_sizes=params.get(model_name).get('dense_dims'),
                                         recurrent_units=params.get(model_name).get('recurrent_units'))
-  elif model_name == 'pyramidCNN':
-    get_model_func = lambda: get_pyramidCNN(embedding_matrix=embedding_matrix,
+    elif model_name == 'pyramidCNN':
+        get_model_func = lambda: get_pyramidCNN(embedding_matrix=embedding_matrix,
                                         num_classes=6,
                                         sequence_length=params.get(model_name).get('sequence_length'),
                                         num_of_filters=params.get(model_name).get('num_of_filters'),
@@ -61,8 +80,8 @@ def get_model(model_name, embedding_matrix, params):
                                         dense_dropout=params.get(model_name).get('dense_dropout'),
                                         use_bn=params.get(model_name).get('use_bn'),
                                         l2_weight_decay=0.0001)
-  elif model_name == 'original_pyramidCNN':
-      get_model_func = lambda: get__original_pyramidCNN(embedding_matrix=embedding_matrix,
+    elif model_name == 'original_pyramidCNN':
+        get_model_func = lambda: get__original_pyramidCNN(embedding_matrix=embedding_matrix,
                                               num_classes=6,
                                               sequence_length=params.get(model_name).get('sequence_length'),
                                               dropout_rate=params.get(model_name).get('dropout_rate'),
@@ -70,8 +89,8 @@ def get_model(model_name, embedding_matrix, params):
                                               filter_size=params.get(model_name).get('filter_size'),
                                               num_of_blocks=params.get(model_name).get('num_of_blocks'),
                                               l2_weight_decay=0.0001)
-  elif model_name == 'pyramid_attention_CNN':
-      get_model_func = lambda: get_pyramid_attention_CNN(embedding_matrix=embedding_matrix,
+    elif model_name == 'pyramid_attention_CNN':
+        get_model_func = lambda: get_pyramid_attention_CNN(embedding_matrix=embedding_matrix,
                                               num_classes=6,
                                               sequence_length=params.get(model_name).get('sequence_length'),
                                               dropout_rate=params.get(model_name).get('dropout_rate'),
@@ -80,37 +99,37 @@ def get_model(model_name, embedding_matrix, params):
                                               num_of_blocks=params.get(model_name).get('num_of_blocks'),
                                               dense_size=params.get(model_name).get('dense_size'),
                                               l2_weight_decay=0.0001)
-  elif model_name == 'simpleCNN':
-      get_model_func = lambda: get_simpleCNN(embedding_matrix=embedding_matrix,
+    elif model_name == 'simpleCNN':
+        get_model_func = lambda: get_simpleCNN(embedding_matrix=embedding_matrix,
                                               num_classes=6,
                                               sequence_length=params.get(model_name).get('sequence_length'),
                                               dropout_rate=params.get(model_name).get('dropout_rate'),
                                               num_of_filters=params.get(model_name).get('num_of_filters'),
                                               filter_sizes=params.get(model_name).get('filter_sizes'))
-  elif model_name == 'get_simpleCNN_conv2d':
-      get_model_func = lambda: get_simpleCNN_conv2d(embedding_matrix=embedding_matrix,
+    elif model_name == 'get_simpleCNN_conv2d':
+        get_model_func = lambda: get_simpleCNN_conv2d(embedding_matrix=embedding_matrix,
                                               num_classes=6,
                                               sequence_length=params.get(model_name).get('sequence_length'),
                                               dropout_rate=params.get(model_name).get('dropout_rate'),
                                               num_of_filters=params.get(model_name).get('num_of_filters'),
                                               filter_sizes=params.get(model_name).get('filter_sizes'))
 
-  elif model_name == "BiGRU_max_avg_pool_concat":
-    get_model_func = lambda: get_BiGRU_Max_Avg_Pool_concat(embedding_matrix=embedding_matrix,
+    elif model_name == "BiGRU_max_avg_pool_concat":
+        get_model_func = lambda: get_BiGRU_Max_Avg_Pool_concat(embedding_matrix=embedding_matrix,
                                                     num_classes=6,
                                                     sequence_length=params.get(model_name).get('sequence_length'),
                                                     recurrent_units=params.get(model_name).get('recurrent_units'),
                                                     dense_size=params.get(model_name).get('dense_dims'),
                                                     dropout_rate=params.get(model_name).get('dropout'))
-  elif model_name == "get_2BiGRU_rec_dropout_glob_max_pool":
-    get_model_func = lambda: get_2BiGRU_rec_dropout_glob_max_pool(embedding_matrix=embedding_matrix,
+    elif model_name == "get_2BiGRU_rec_dropout":
+        get_model_func = lambda: get_2BiGRU_rec_dropout(embedding_matrix=embedding_matrix,
                                                                   num_classes=6,
                                                                   sequence_length=params.get(model_name).get('sequence_length'),
                                                                   recurrent_units=params.get(model_name).get('recurrent_units'),
                                                                   dense_size=params.get(model_name).get('dense_dim'),
                                                                   dropout_rate=params.get(model_name).get('dropout'))
-  elif model_name == 'pyramid_gated_CNN':
-      get_model_func = lambda: get_pyramid_gated_CNN(embedding_matrix=embedding_matrix,
+    elif model_name == 'pyramid_gated_CNN':
+        get_model_func = lambda: get_pyramid_gated_CNN(embedding_matrix=embedding_matrix,
                                               num_classes=6,
                                               sequence_length=params.get(model_name).get('sequence_length'),
                                               dropout_rate=params.get(model_name).get('dropout_rate'),
@@ -119,28 +138,72 @@ def get_model(model_name, embedding_matrix, params):
                                               num_of_blocks=params.get(model_name).get('num_of_blocks'),
                                               dense_size=params.get(model_name).get('dense_size'),
                                               l2_weight_decay=0.0001)
-  elif model_name == '2BiSRU_GlobMaxPool':
-    get_model_func = lambda: get_2BiSRU_GlobMaxPool(embedding_matrix=embedding_matrix,
+    elif model_name == '2BiSRU_rec_dropout':
+        get_model_func = lambda: get_2BiSRU_rec_dropout_GlobMaxPool(embedding_matrix=embedding_matrix,
                                                     num_classes=6,
                                                     sequence_length=params.get(model_name).get('sequence_length'),
                                                     recurrent_units=params.get(model_name).get('recurrent_units'),
                                                     dense_size=params.get(model_name).get('dense_dim'),
                                                     dropout_rate=params.get(model_name).get('dropout'))
 
-  elif model_name == 'disan':
-    get_model_func = lambda: get_diSAN(embedding_matrix=embedding_matrix,
+    elif model_name == '2BiLSTM_rec_dropout':
+        get_model_func = lambda: get_2BiLSTM_rec_dropout(embedding_matrix=embedding_matrix,
+                                                    num_classes=6,
+                                                    sequence_length=params.get(model_name).get('sequence_length'),
+                                                    recurrent_units=params.get(model_name).get('recurrent_units'),
+                                                    dense_size=params.get(model_name).get('dense_dim'),
+                                                    dropout_rate=params.get(model_name).get('dropout'),
+                                                    recurrent_dropout_rate=params.get(model_name).get('recurrent_dropout'))
+
+    elif model_name == '2BiSRU_spat_dropout':
+        get_model_func = lambda: get_2BiSRU_spat_dropout(embedding_matrix=embedding_matrix,
+                                                            num_classes=6,
+                                                            sequence_length=params.get(model_name).get(
+                                                                'sequence_length'),
+                                                            recurrent_units=params.get(model_name).get(
+                                                                'recurrent_units'),
+                                                            dense_size=params.get(model_name).get('dense_dim'),
+                                                            dropout_rate=params.get(model_name).get('dropout'),
+                                                            spatial_dropout_rate=params.get(model_name).get('spatial_dropout'))
+    elif model_name == '2BiGRU_spat_dropout':
+        get_model_func = lambda: get_2BiGRU_spat_dropout(embedding_matrix=embedding_matrix,
+                                                                     num_classes=6,
+                                                                     sequence_length=params.get(model_name).get(
+                                                                         'sequence_length'),
+                                                                     recurrent_units=params.get(model_name).get(
+                                                                         'recurrent_units'),
+                                                                     dense_size=params.get(model_name).get('dense_dim'),
+                                                                     dropout_rate=params.get(model_name).get('dropout'),
+                                                                     spatial_dropout_rate=params.get(model_name).get(
+                                                                         'spatial_dropout'))
+    elif model_name == '2BiLSTM_spat_dropout':
+        get_model_func = lambda: get_2BiLSTM_spat_dropout(embedding_matrix=embedding_matrix,
+                                                                     num_classes=6,
+                                                                     sequence_length=params.get(model_name).get(
+                                                                         'sequence_length'),
+                                                                     recurrent_units=params.get(model_name).get(
+                                                                         'recurrent_units'),
+                                                                     dense_size=params.get(model_name).get('dense_dim'),
+                                                                     dropout_rate=params.get(model_name).get('dropout'),
+                                                                     spatial_dropout_rate=params.get(model_name).get(
+                                                                         'spatial_dropout'))
+
+
+
+    elif model_name == 'disan':
+        get_model_func = lambda: get_diSAN(embedding_matrix=embedding_matrix,
                                        num_classes=6,
                                            sequence_length=500)
 
-  else:
+    else:
     # ============= BiGRU =============
-    get_model_func = lambda: get_2BiGRU(embedding_matrix=embedding_matrix,
+        get_model_func = lambda: get_2BiGRU(embedding_matrix=embedding_matrix,
                                         num_classes=6,
                                         sequence_length=params.get(model_name).get('sequence_length'),
                                         dense_size=params.get(model_name).get('dense_dim'),
                                         recurrent_units=params.get(model_name).get('recurrent_units'))
 
-  return get_model_func
+    return get_model_func
 
 
 class LossHistory(Callback):

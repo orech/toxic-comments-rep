@@ -1,0 +1,18 @@
+{
+  "models": [
+    "2BiLSTM_spat_dropout"
+  ],
+  "2BiLSTM_spat_dropout": {
+    "optimizer": "nadam",
+    "folding": true,
+    "num_folds": 10,
+    "num_epochs": 10,
+    "sequence_length": 500,
+    "recurrent_units": 128,
+    "dense_dim": 64,
+    "dropout":0.5,
+    "spatial_dropout" : 0.5,
+    "batch_size": 256,
+    "norm_folds": true
+  }
+}
