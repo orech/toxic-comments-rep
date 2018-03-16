@@ -6,15 +6,6 @@ from six import iteritems
 import numpy as np
 from alphabet_detector import AlphabetDetector
 
-from catboost import CatBoostClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.externals import joblib
-from keras.models import load_model
-
-from nltk.tokenize import RegexpTokenizer
-from tqdm import tqdm
-
 from embed_utils import load_data, Embeds, Logger, read_embedding_list, clear_embedding_list
 from data_utils import calc_text_uniq_words, clean_texts, convert_text2seq, get_embedding_matrix, clean_seq, split_data, get_bow, tokenize_sentences, convert_tokens_to_ids, tokenize_sentences_adv
 
@@ -85,10 +76,10 @@ def main(*kargs, **kwargs):
     word_dict[UNKNOWN_WORD] = len(word_dict)
 
 
-    # ==== Load additional data ====
-    logger.info('Loading additional data...')
-    swear_words = load_data(swear_words_fname, func=lambda x: set(x.T[0]), header=None)
-    wrong_words_dict = load_data(wrong_words_fname, func=lambda x: {val[0] : val[1] for val in x})
+    # # ==== Load additional data ====
+    # logger.info('Loading additional data...')
+    # swear_words = load_data(swear_words_fname, func=lambda x: set(x.T[0]), header=None)
+    # wrong_words_dict = load_data(wrong_words_fname, func=lambda x: {val[0] : val[1] for val in x})
 
 
     # ==== Load embedding vectors and clean them ====
@@ -96,29 +87,29 @@ def main(*kargs, **kwargs):
     embedding_list, embedding_word_dict = read_embedding_list(embeds_fname)
     embedding_size = len(embedding_list[0])
 
-    if oov_embeds_file is not None:
+    if oov_embeds_file != '':
         logger.info('Loading embeddings for oov words...')
-        embedding_list, embedding_word_dict = read_embedding_list(embeds_fname, embedding_word_dict, embedding_list)
+        embedding_list, embedding_word_dict = read_embedding_list(oov_embeds_file, embedding_word_dict, embedding_list)
         embedding_size = len(embedding_list[0])
 
     logger.info('Cleaning embedding list...')
     embedding_list, embedding_word_dict, oov_words = clear_embedding_list(embedding_list, embedding_word_dict, word_dict)
 
-    # ======== Clean oov words and save them =========
-    oov_cleaned = []
-    ad = AlphabetDetector()
-    with open('data/oov_words_{0}.txt'.format(embeds_type), 'wt+') as oov_file:
-        for w in oov_words:
-            if ad.only_alphabet_chars(w, "LATIN") and re.match(r'^[A-Za-z]+$', w) and (len(w) <= 15):
-                oov_cleaned.append(w)
-                oov_file.write(w+'\n')
-    oov_file.close()
+    # # ======== Clean oov words and save them =========
+    # oov_cleaned = []
+    # ad = AlphabetDetector()
+    # with open('data/oov_words_{0}.txt'.format(embeds_type), 'wt+') as oov_file:
+    #     for w in oov_words:
+    #         if ad.only_alphabet_chars(w, "LATIN") and re.match(r'^[A-Za-z]+$', w) and (len(w) <= 15):
+    #             oov_cleaned.append(w)
+    #             oov_file.write(w+'\n')
+    # oov_file.close()
 
 
     embedding_word_dict[UNKNOWN_WORD] = len(embedding_word_dict)
-    embedding_list.append([0.] * embedding_size)
+    embedding_list.append(np.asarray([0.] * embedding_size))
     embedding_word_dict[END_WORD] = len(embedding_word_dict)
-    embedding_list.append([-1.] * embedding_size)
+    embedding_list.append(np.asarray([-1.] * embedding_size))
 
     embedding_matrix = np.array(embedding_list)
 

@@ -113,6 +113,7 @@ class Embeds(object):
 
 def read_embedding_list(file_path, embed_word_dict=None, embed_list=None):
     if embed_word_dict is not None:
+        print('add oov embeddings')
         embedding_word_dict = embed_word_dict
         try:
             embedding_list = embed_list.tolist()
@@ -123,9 +124,9 @@ def read_embedding_list(file_path, embed_word_dict=None, embed_list=None):
         embedding_list = []
 
     f = open(file_path, encoding='utf8')
-
+    print(file_path)
     for index, line in enumerate(f):
-        if index == 0:
+        if index == 0 and embed_word_dict is None:
             continue
         values = line.split()
         word = values[0]
@@ -133,8 +134,11 @@ def read_embedding_list(file_path, embed_word_dict=None, embed_list=None):
             coefs = np.asarray(values[1:], dtype='float32')
         except:
             continue
-        embedding_list.append(coefs)
-        embedding_word_dict[word] = len(embedding_word_dict)
+        if word not in embedding_word_dict.keys():
+            embedding_list.append(coefs)
+            embedding_word_dict[word] = len(embedding_word_dict)
+        else:
+            continue
     f.close()
     embedding_list = np.array(embedding_list)
     return embedding_list, embedding_word_dict

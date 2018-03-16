@@ -82,9 +82,8 @@ def get_BiGRU_Dense(embedding_matrix, num_classes, sequence_length, recurrent_un
 
 def get_BiGRU_Attention(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, spatial_dropout_rate=0.5):
     input_layer = Input(shape=(sequence_length,))
-    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
-                                trainable=False)(input_layer)
-
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(spat_dropout)
     x = BatchNormalization()(x)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(x)
