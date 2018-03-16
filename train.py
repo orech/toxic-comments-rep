@@ -4,7 +4,7 @@ from math import pow, floor
 from keras import optimizers, callbacks, backend, losses
 from keras.callbacks import EarlyStopping, LearningRateScheduler, Callback
 from sklearn.metrics import log_loss, roc_auc_score, accuracy_score
-from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiLSTM_Attention, get_BiSRU_Attention, get_BiGRU_Dense, get_BiGRU_Max_Avg_Pool_concat, get_2BiGRU_rec_dropout, get_pyramidCNN, get_simpleCNN, get__original_pyramidCNN, get_pyramid_attention_CNN, get_pyramid_gated_CNN, get_2BiSRU_rec_dropout_GlobMaxPool, get_simpleCNN_conv2d, get_diSAN, get_2BiLSTM_rec_dropout, get_2BiSRU_spat_dropout, get_2BiGRU_spat_dropout, get_2BiLSTM_spat_dropout
+from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiLSTM_Attention, get_BiSRU_Attention, get_BiGRU_Dense, get_BiGRU_Max_Avg_Pool_concat, get_2BiGRU_rec_dropout, get_pyramidCNN, get_simpleCNN, get__original_pyramidCNN, get_pyramid_attention_CNN, get_pyramid_gated_CNN, get_2BiSRU_rec_dropout_GlobMaxPool, get_simpleCNN_conv2d, get_diSAN, get_2BiLSTM_rec_dropout, get_2BiSRU_spat_dropout, get_2BiGRU_spat_dropout, get_2BiLSTM_spat_dropout, get_capsuleNet
 import numpy as np
 
 
@@ -187,6 +187,16 @@ def get_model(model_name, embedding_matrix, params):
                                                                      dropout_rate=params.get(model_name).get('dropout'),
                                                                      spatial_dropout_rate=params.get(model_name).get(
                                                                          'spatial_dropout'))
+    elif model_name == 'capsuleNet':
+        get_model_func = lambda: get_capsuleNet(embedding_matrix=embedding_matrix,
+                                                num_classes=6,
+                                                sequence_length=params.get(model_name).get('sequence_length'),
+                                                recurrent_units=params.get(model_name).get('recurrent_units'),
+                                                num_capsule=params.get(model_name).get('num_capsule'),
+                                                dim_capsule=params.get(model_name).get('dim_capsule'),
+                                                routings=params.get(model_name).get('routings'),
+                                                dropout_rate=params.get(model_name).get('dropout'),
+                                                spatial_dropout_rate=params.get(model_name).get('spatial_dropout'))
 
 
 
