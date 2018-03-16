@@ -20,8 +20,7 @@ from keras import backend as K
 from keras.engine.topology import Layer
 from keras import initializers, regularizers, constraints
 
-from sru import SRU
-
+from sru import SRU, Capsule
 
 
 def get_cnn(embedding_matrix, num_classes, embed_dim, max_seq_len, num_filters=64, l2_weight_decay=0.0001, dropout_val=0.5, dense_dim=32, add_sigmoid=True):
@@ -221,7 +220,7 @@ def get_2BiGRU_spat_dropout(embedding_matrix, num_classes, sequence_length, recu
     spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(spat_dropout)
     x = Dropout(dropout_rate)(x)
-    x = Bidirectional(GRU(recurrent_units, return_sequences=True))(x)
+    x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(x)
     x = Dropout(dropout_rate)(x)
     x = GlobalMaxPooling1D()(x)
     x = Dense(dense_size, activation="relu", kernel_initializer='glorot_uniform')(x)
@@ -515,6 +514,21 @@ def get_simpleCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, 
     dense_1 = Dense(128, activation='relu', kernel_regularizer=regularizers.l2(l2_weight_decay))(drop)
     dense_2 = Dense(64, activation='relu', kernel_regularizer=regularizers.l2(l2_weight_decay))(dense_1)
     output_layer = Dense(num_classes, activation="sigmoid", kernel_regularizer=regularizers.l2(l2_weight_decay))(dense_2)
+    model = Model(inputs=input_layer, outputs=output_layer)
+    return model
+
+
+
+def get_capsuleNet(embedding_matrix, num_classes, sequence_length, recurrent_units, num_capsule=10, dim_capsule=16, routings=5, dropout_rate=0.5, spatial_dropout_rate=0.5):
+    input_layer = Input(shape=(sequence_length,))
+    embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
+    spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
+    x = Bidirectional(CuDNNLSTM(recurrent_units, return_sequences=True))(spat_dropout)
+    capsule = Capsule(num_capsule=num_capsule, dim_capsule=dim_capsule, routings=routings, share_weights=True)(x)
+    # output_capsule = Lambda(lambda x: K.sqrt(K.sum(K.square(x), 2)))(capsule)
+    capsule = Flatten()(capsule)
+    capsule = Dropout(dropout_rate)(capsule)
+    output_layer = Dense(num_classes, activation='sigmoid')(capsule)
     model = Model(inputs=input_layer, outputs=output_layer)
     return model
 

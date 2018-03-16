@@ -12,7 +12,7 @@
     "dropout" : 0.5,
     "spatial_dropout" : 0.5,
     "dense_dim": 64,
-    "batch_size": 256,
+    "batch_size": 128,
     "norm_folds": true
   }
 }
