@@ -39,6 +39,7 @@ def get_kwargs(kwargs):
     parser.add_argument('--train-clean', dest='train_clean', action='store', help='/path/to/save_train_clean_file', type=str, default='data/train_clean.npy')
     parser.add_argument('--test-clean', dest='test_clean', action='store', help='/path/to/save_test_clean_file', type=str, default='data/results/test_clean.npy')
     parser.add_argument('--embeds-clean', dest='embeds_clean', action='store', help='/path/to/save_embeds_clean_file', type=str, default='data/results/embeds_clean.npy')
+    parser.add_argument('--oov-embeds', dest='oov_embeds', action='store', help='/path/to/oov_embeds_file', type=str, default='')
     parser.add_argument('--embeds-type', dest='embeds_type', action='store', type=str, default='ft_comm_crawl')
     for key, value in iteritems(parser.parse_args().__dict__):
         kwargs[key] = value
@@ -56,6 +57,7 @@ def main(*kargs, **kwargs):
     embeds_clean = kwargs['embeds_clean']
     embeds_fname = kwargs['embeds']
     embeds_type = kwargs['embeds_type']
+    oov_embeds_file = kwargs['oov_embeds']
     train_labels = 'data/train.labels.npy'
 
 
@@ -94,13 +96,18 @@ def main(*kargs, **kwargs):
     embedding_list, embedding_word_dict = read_embedding_list(embeds_fname)
     embedding_size = len(embedding_list[0])
 
+    if oov_embeds_file is not None:
+        logger.info('Loading embeddings for oov words...')
+        embedding_list, embedding_word_dict = read_embedding_list(embeds_fname, embedding_word_dict, embedding_list)
+        embedding_size = len(embedding_list[0])
+
     logger.info('Cleaning embedding list...')
     embedding_list, embedding_word_dict, oov_words = clear_embedding_list(embedding_list, embedding_word_dict, word_dict)
 
     # ======== Clean oov words and save them =========
     oov_cleaned = []
     ad = AlphabetDetector()
-    with open('oov_words.txt', 'wt+') as oov_file:
+    with open('data/oov_words_{0}.txt'.format(embeds_type), 'wt+') as oov_file:
         for w in oov_words:
             if ad.only_alphabet_chars(w, "LATIN") and re.match(r'^[A-Za-z]+$', w) and (len(w) <= 15):
                 oov_cleaned.append(w)

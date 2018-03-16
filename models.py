@@ -1,8 +1,10 @@
 from scipy import sparse
+import numpy as np
 
 from sklearn.feature_extraction.text import TfidfVectorizer
-from layers import AttentionWeightedAverage, Attention, DiSAN
+from layers import AttentionWeightedAverage, Attention, disan
 from keras import regularizers
+import tensorflow as tf
 
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Bidirectional, LSTM, Merge, Conv2D, MaxPooling2D, BatchNormalization, Lambda, Reshape, SpatialDropout1D
@@ -82,7 +84,6 @@ def get_BiGRU_Attention(embedding_matrix, num_classes, sequence_length, recurren
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
                                 trainable=False)(input_layer)
 
-    spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(spat_dropout)
     x = BatchNormalization()(x)
     x = Bidirectional(CuDNNGRU(recurrent_units, return_sequences=True))(x)
@@ -98,7 +99,6 @@ def get_BiLSTM_Attention(embedding_matrix, num_classes, sequence_length, recurre
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
                                 trainable=False)(input_layer)
-
     spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
     x = Bidirectional(CuDNNLSTM(recurrent_units, return_sequences=True))(spat_dropout)
     x = BatchNormalization()(x)
@@ -113,9 +113,9 @@ def get_BiLSTM_Attention(embedding_matrix, num_classes, sequence_length, recurre
 
 def get_BiSRU_Attention(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, spatial_dropout_rate=0.5):
     input_layer = Input(shape=(sequence_length,))
+    print(embedding_matrix)
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
                                 trainable=False)(input_layer)
-
     spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
     x = Bidirectional(SRU(recurrent_units, return_sequences=True))(spat_dropout)
     x = BatchNormalization()(x)
@@ -251,8 +251,11 @@ def get_2BiLSTM_spat_dropout(embedding_matrix, num_classes, sequence_length, rec
 def get_diSAN(embedding_matrix, num_classes, sequence_length):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
-
-    x = DiSAN(is_train=None, wd=0., keep_prob=0.5)(embedding_layer)
+    shape = K.shape(embedding_layer)
+    mask = tf.fill(shape[0:2], True)
+    print(mask)
+    x = disan(is_train=True, keep_prob=0.5, wd=0.)(inputs=embedding_layer, rep_mask=mask)
+    x = Dense(128, activation="relu", kernel_initializer='glorot_uniform')(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
     model = Model(inputs=input_layer, outputs=output_layer)
     return model

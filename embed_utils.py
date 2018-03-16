@@ -111,9 +111,16 @@ class Embeds(object):
         self.embedding_index = cleared_embedding_word_dict
 
 
-def read_embedding_list(file_path):
-    embedding_word_dict = {}
-    embedding_list = []
+def read_embedding_list(file_path, embed_word_dict=None, embed_list=None):
+    if embed_word_dict is not None:
+        embedding_word_dict = embed_word_dict
+        try:
+            embedding_list = embed_list.tolist()
+        except ValueError as err:
+            print('Both embed_word_dictionary and embed_word_list should be provided', err)
+    else:
+        embedding_word_dict = {}
+        embedding_list = []
 
     f = open(file_path, encoding='utf8')
 
