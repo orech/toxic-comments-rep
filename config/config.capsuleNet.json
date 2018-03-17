@@ -1,0 +1,20 @@
+{
+  "models": [
+    "capsuleNet"
+  ],
+  "capsuleNet": {
+    "optimizer": "adam",
+    "folding": true,
+    "num_folds": 5,
+    "num_epochs": 10,
+    "sequence_length": 500,
+    "recurrent_units": 128,
+    "num_capsule": 10,
+    "dim_capsule": 16,
+    "routings": 5,
+    "dropout" : 0.3,
+    "spatial_dropout" : 0.3,
+    "batch_size": 128,
+    "norm_folds": true
+  }
+}

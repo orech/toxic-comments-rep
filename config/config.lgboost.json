@@ -1,0 +1,77 @@
+{
+    "models": ["capsuleNet", "BiLSTM_attention", "BiGRU_attention", "pyramidCNN", "simpleCNN"],
+    
+           
+    "capsuleNet": {
+    		"optimizer": "adam",
+    		"folding": true,
+    		"num_folds": 5,
+    		"num_epochs": 10,
+    		"sequence_length": 500,
+    		"recurrent_units": 128,
+    		"num_capsule": 10,
+    		"dim_capsule": 16,
+    		"routings": 5,
+    		"dropout" : 0.3,
+    		"spatial_dropout" : 0.3,
+    		"batch_size": 128,
+    		"norm_folds": true
+  		},
+     "BiLSTM_attention": {
+            "optimizer": "nadam",
+            "folding": true,
+            "num_folds": 5,
+            "num_epochs": 10,
+            "sequence_length": 500,
+            "recurrent_units": 128,
+            "dropout" : 0.5,
+            "spatial_dropout" : 0.5,
+            "dense_dim": 64,
+            "batch_size": 128,
+            "norm_folds": true
+    },
+     "BiGRU_attention": {
+            "optimizer": "nadam",
+            "folding": true,
+            "num_folds": 5,
+            "num_epochs": 10,
+            "sequence_length": 500,
+            "recurrent_units": 128,
+            "dropout" : 0.5,
+            "spatial_dropout" : 0.5,
+            "dense_dim": 64,
+            "batch_size": 256,
+            "norm_folds": true
+    },
+    "pyramidCNN": {
+            "folding": true,
+            "num_folds": 5,
+            "num_epochs": 10,
+            "sequence_length": 500,
+            "embedding_dropout": 0.3,
+            "dense_dropout": 0.5,
+            "conv_dropout": 0.0,
+            "use_bn": true,
+            "filter_size": 3,
+            "num_of_filters": 256,
+            "num_of_blocks": 3,
+            "batch_size": 128,
+            "optimizer": "adam",
+            "norm_folds": true
+    },
+    
+    "simpleCNN": {
+            "folding": true,
+            "num_folds": 5,
+            "num_epochs": 10,
+            "sequence_length": 500,
+            "dropout_rate": 0.5,
+            "filter_sizes": [2, 3, 4, 5, 6],
+            "num_of_filters": 256,
+            "batch_size": 128,
+            "optimizer": "adam",
+            "norm_folds": true
+    }
+
+}
+
