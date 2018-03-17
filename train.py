@@ -335,6 +335,7 @@ def _train_model(model, batch_size, train_x, train_y, val_x, val_y, opt, logger)
 def train_folds(X, y, fold_count, batch_size, get_model_func, optimizer, logger):
     fold_size = len(X) // fold_count
     models = []
+    val_predictions = []
     for fold_id in range(0, fold_count):
       fold_start = fold_size * fold_id
       fold_end = fold_start + fold_size
@@ -349,9 +350,10 @@ def train_folds(X, y, fold_count, batch_size, get_model_func, optimizer, logger)
       val_y = y[fold_start:fold_end]
 
       model = _train_model(get_model_func(), batch_size, train_x, train_y, val_x, val_y, optimizer, logger)
+      val_predictions.append(model.predict(val_x))
       models.append(model)
 
-    return models
+    return models, val_predictions
 
 
 def train_folds_catboost(X, y, fold_count, batch_size, get_model_func, optimizer, logger):

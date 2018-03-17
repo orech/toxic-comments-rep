@@ -72,10 +72,13 @@ def main(*kargs, **kwargs):
     test_clean = kwargs['test_clean']
     embeds_clean = kwargs['embeds_clean']
     result_path = './outputs/'
+    oof_path = './oof_predictions'
 
 
     if not os.path.exists(result_path):
         os.mkdir(result_path)
+    if not os.path.exists(oof_path):
+        os.mkdir(oof_path)
 
     # cnn_model_file = 'data/cnn.h5'
     # lstm_model_file = 'data/lstm_model.h5'
@@ -120,11 +123,9 @@ def main(*kargs, **kwargs):
             batch_size = params.get(model_name).get('batch_size')
 
             logger.debug('Starting {0} training on folds...'.format(model_name))
-            models = train_folds(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, model_func, params.get(model_name).get('optimizer'), logger=logger)
-
-            if not os.path.exists(result_path):
-                os.mkdir(result_path)
-
+            models, val_predictions = train_folds(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, model_func, params.get(model_name).get('optimizer'), logger=logger)
+            val_predictions_array = np.concatenate(val_predictions, axis=0)
+            np.save(os.path.join(oof_path, "{0}_{1}_oof.npy".format(model_name, embeds_type)), val_predictions_array)
             logger.debug('Predicting results...')
             test_predicts_list = []
             for fold_id, model in enumerate(models):
