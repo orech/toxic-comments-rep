@@ -5,7 +5,7 @@
   "BiSRU_attention": {
     "optimizer": "nadam",
     "folding": true,
-    "num_folds": 10,
+    "num_folds": 5,
     "num_epochs": 10,
     "sequence_length": 500,
     "recurrent_units": 128,
