@@ -10,7 +10,7 @@ num_test_samples = 153164
 
 def main():
 
-    submission_path = '../overfitted_blend'
+    submission_path = '../oov+common_crawl/'
     result_path = './blending_results/'
     if not os.path.exists(result_path):
         os.mkdir(result_path)
@@ -31,7 +31,7 @@ def main():
     test_predicts = pd.DataFrame(data=final_predictions, columns=target_labels)
     test_predicts["id"] = test_ids
     test_predicts = test_predicts[["id"] + target_labels]
-    submit_path = os.path.join(result_path, "{0}.csv".format("new_overfitted_blending"))
+    submit_path = os.path.join(result_path, "{0}.csv".format("oov_common_crawl_geom_avg"))
     test_predicts.to_csv(submit_path, index=False)
 if __name__=='__main__':
     main()

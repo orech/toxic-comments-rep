@@ -71,6 +71,7 @@ def main(*kargs, **kwargs):
     model_warm_start = [model.lower() for model in kwargs['model_warm_start']]
     config = kwargs['config']
     train_clean = kwargs['train_clean']
+    embeds_type = kwargs['embeds_type']
     train_labels = kwargs['train_labels']
     test_clean = kwargs['test_clean']
     embeds_clean = kwargs['embeds_clean']
@@ -120,7 +121,7 @@ def main(*kargs, **kwargs):
         logger.debug('Starting {0} training on folds...'.format(model_name))
         models, val_predictions = train_folds_catboost(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, model_func, params.get(model_name).get('optimizer'), logger=logger)
         val_predictions_array = np.concatenate([minmax_scale(fold) for fold in val_predictions], axis=0)
-        np.save(os.path.join(result_path, "oof_{0}.npy".format(model_name)), val_predictions_array)
+        np.save(os.path.join(result_path, "oof_{0}_{1].npy".format(model_name, embeds_type)), val_predictions_array)
         val_predictions_list.append(val_predictions_array)
         logger.debug('Predicting results...')
         test_predictions = []
@@ -130,7 +131,7 @@ def main(*kargs, **kwargs):
         for fold_predict in test_predictions:
             final_test_predictions *= minmax_scale(fold_predict)
         final_test_predictions **= (1. / len(test_predictions))
-        np.save(os.path.join(result_path, "test_predictions_{0}.npy".format(model_name)), final_test_predictions)
+        np.save(os.path.join(result_path, "test_predictions_{0}_{1}.npy".format(model_name, embeds_type)), final_test_predictions)
         test_predictions_list.append(final_test_predictions)
 
     x_test = np.concatenate(test_predictions_list, axis=1)
@@ -158,7 +159,7 @@ def main(*kargs, **kwargs):
     result_path = './lgboost'
     if not os.path.exists(result_path):
         os.mkdir(result_path)
-    submit_path = os.path.join(result_path, "{0}.csv".format('lgboost_folds'))
+    submit_path = os.path.join(result_path, "{0}_{1}.csv".format('lgboost_folds', embeds_type))
     sub.to_csv(submit_path, index=False)
 
 

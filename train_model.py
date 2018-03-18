@@ -4,6 +4,7 @@ import argparse
 import logging
 from six import iteritems
 import numpy as np
+from sklearn.preprocessing import minmax_scale
 
 from catboost import CatBoostClassifier
 from sklearn.linear_model import LogisticRegression
@@ -124,7 +125,7 @@ def main(*kargs, **kwargs):
 
             logger.debug('Starting {0} training on folds...'.format(model_name))
             models, val_predictions = train_folds(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, model_func, params.get(model_name).get('optimizer'), logger=logger)
-            val_predictions_array = np.concatenate(val_predictions, axis=0)
+            val_predictions_array = np.concatenate([minmax_scale(fold) for fold in val_predictions], axis=0)
             np.save(os.path.join(oof_path, "{0}_{1}_oof.npy".format(model_name, embeds_type)), val_predictions_array)
             logger.debug('Predicting results...')
             test_predicts_list = []
@@ -139,7 +140,7 @@ def main(*kargs, **kwargs):
 
             test_predictions = np.ones(test_predicts_list[0].shape)
             for fold_predict in test_predicts_list:
-                test_predictions *= fold_predict
+                test_predictions *= minmax_scale(fold_predict)
             if params.get(model_name).get('norm_folds'):
                 test_predictions **= (1. / len(test_predicts_list))
             # test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
