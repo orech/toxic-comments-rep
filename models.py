@@ -1,8 +1,7 @@
 from scipy import sparse
-import numpy as np
 
 from sklearn.feature_extraction.text import TfidfVectorizer
-from layers import AttentionWeightedAverage, Attention, disan
+from layers import AttentionWeightedAverage, disan
 from keras import regularizers
 import tensorflow as tf
 
@@ -20,7 +19,7 @@ from keras import backend as K
 from keras.engine.topology import Layer
 from keras import initializers, regularizers, constraints
 
-from sru import SRU, Capsule
+from layers import SRU, Capsule
 
 
 def get_cnn(embedding_matrix, num_classes, embed_dim, max_seq_len, num_filters=64, l2_weight_decay=0.0001, dropout_val=0.5, dense_dim=32, add_sigmoid=True):
@@ -93,7 +92,6 @@ def get_BiGRU_Attention(embedding_matrix, num_classes, sequence_length, recurren
     return model
 
 
-
 def get_BiLSTM_Attention(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, spatial_dropout_rate=0.5):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
@@ -109,10 +107,8 @@ def get_BiLSTM_Attention(embedding_matrix, num_classes, sequence_length, recurre
     return model
 
 
-
 def get_BiSRU_Attention(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5, spatial_dropout_rate=0.5):
     input_layer = Input(shape=(sequence_length,))
-    print(embedding_matrix)
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix],
                                 trainable=False)(input_layer)
     spat_dropout = SpatialDropout1D(spatial_dropout_rate)(embedding_layer)
@@ -246,7 +242,7 @@ def get_2BiLSTM_spat_dropout(embedding_matrix, num_classes, sequence_length, rec
     return model
 
 
-
+# is still in development
 def get_diSAN(embedding_matrix, num_classes, sequence_length):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
@@ -254,11 +250,10 @@ def get_diSAN(embedding_matrix, num_classes, sequence_length):
     mask = tf.fill(shape[0:2], True)
     print(mask)
     x = disan(is_train=True, keep_prob=0.5, wd=0.)(inputs=embedding_layer, rep_mask=mask)
-    x = Dense(128, activation="relu", kernel_initializer='glorot_uniform')(x)
+    # x = Dense(128, activation="relu", kernel_initializer='glorot_uniform')(x)
     output_layer = Dense(num_classes, activation="sigmoid")(x)
     model = Model(inputs=input_layer, outputs=output_layer)
     return model
-
 
 
 def get_BiGRU_Max_Avg_Pool_concat(embedding_matrix, num_classes, sequence_length, recurrent_units, dense_size, dropout_rate=0.5):
@@ -337,8 +332,6 @@ def conv_block(x, num_of_filters, filter_size, conv_dropout, use_bn):
     return x
 
 
-
-
 def get_pyramid_gated_CNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_size, num_of_blocks, dense_size=128, l2_weight_decay=0.0001):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1],
@@ -395,7 +388,6 @@ def get_pyramid_gated_CNN(embedding_matrix, num_classes, sequence_length, dropou
     return model
 
 
-
 def get_pyramid_attention_CNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_size, num_of_blocks, dense_size=128, l2_weight_decay=0.0001):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1],
@@ -440,7 +432,6 @@ def get_pyramid_attention_CNN(embedding_matrix, num_classes, sequence_length, dr
     return model
 
 
-
 def get__original_pyramidCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_size, num_of_blocks, l2_weight_decay=0.0001):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1],
@@ -478,7 +469,6 @@ def get__original_pyramidCNN(embedding_matrix, num_classes, sequence_length, dro
     return model
 
 
-
 def get_simpleCNN_conv2d(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_sizes):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1],
@@ -499,7 +489,6 @@ def get_simpleCNN_conv2d(embedding_matrix, num_classes, sequence_length, dropout
     return model
 
 
-
 def get_simpleCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, num_of_filters, filter_sizes, l2_weight_decay=0.0001):
     input_layer = Input(shape=(sequence_length,))
     embedding_layer = Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1], weights=[embedding_matrix], trainable=False)(input_layer)
@@ -516,7 +505,6 @@ def get_simpleCNN(embedding_matrix, num_classes, sequence_length, dropout_rate, 
     output_layer = Dense(num_classes, activation="sigmoid", kernel_regularizer=regularizers.l2(l2_weight_decay))(dense_2)
     model = Model(inputs=input_layer, outputs=output_layer)
     return model
-
 
 
 def get_capsuleNet(embedding_matrix, num_classes, sequence_length, recurrent_units, num_capsule=10, dim_capsule=16, routings=5, dropout_rate=0.5, spatial_dropout_rate=0.5):

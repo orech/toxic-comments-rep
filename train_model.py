@@ -35,11 +35,8 @@ PROBABILITIES_NORMALIZE_COEFFICIENT = 1.4
 
 
 def get_kwargs(kwargs):
-    parser = argparse.ArgumentParser(description='--train=$TRAIN_DATA --test=$TEST_DATA --embeds=$EMBEDS_FILE --embeds_type=$EMBEDS_TYPE --train-clean=$TRAIN_CLEAN --test-clean=$TEST_CLEAN --embeds-clean=$EMBEDS_CLEAN --train-labels=$TRAIN_LABELS --config=$CONFIG --output=$OUTPUT_FILE --logger=$LOG_FILE')
-    parser.add_argument('-f', '--train', dest='train', action='store', help='/path/to/trian_file', type=str)
+    parser = argparse.ArgumentParser(description='--test=$TEST_DATA --embeds_type=$EMBEDS_TYPE --train-clean=$TRAIN_CLEAN --test-clean=$TEST_CLEAN --embeds-clean=$EMBEDS_CLEAN --train-labels=$TRAIN_LABELS --config=$CONFIG --logger=$LOG_FILE')
     parser.add_argument('-t', '--test', dest='test', action='store', help='/path/to/test_file', type=str)
-    parser.add_argument('-o', '--output', dest='output', action='store', help='/path/to/output_file', type=str)
-    parser.add_argument('-e', '--embeds', dest='embeds', action='store', help='/path/to/embeds_file', type=str)
     parser.add_argument('-et', '--embeds_type', dest='embeds_type', action='store', help='fasttext | glove | word2vec', type=str)
     parser.add_argument('-l', '--logger', dest='logger', action='store', help='/path/to/log_file', type=str, default=None)
     parser.add_argument('--warm-start', dest='warm_start', action='store', help='true | false', type=bool, default=False)
@@ -59,14 +56,11 @@ def main(*kargs, **kwargs):
 
     # ============ Parse global parameters ============
     get_kwargs(kwargs)
-    train_fname = kwargs['train']
     test_fname = kwargs['test']
-    result_fname = kwargs['output']
-    embeds_fname = kwargs['embeds']
     embeds_type = kwargs['embeds_type']
     logger_fname = kwargs['logger']
-    warm_start = kwargs['warm_start']
-    model_warm_start = [model.lower() for model in kwargs['model_warm_start']]
+    # warm_start = kwargs['warm_start']
+    # model_warm_start = [model.lower() for model in kwargs['model_warm_start']]
     config = kwargs['config']
     train_clean = kwargs['train_clean']
     train_labels = kwargs['train_labels']
@@ -81,13 +75,6 @@ def main(*kargs, **kwargs):
     if not os.path.exists(oof_path):
         os.mkdir(oof_path)
 
-    # cnn_model_file = 'data/cnn.h5'
-    # lstm_model_file = 'data/lstm_model.h5'
-    # gru_model_file = 'data/gru_model.h5'
-    # concat_model_file = 'data/concat.h5'
-    # cnn_model_file = 'data/cnn.h5'
-    # lr_model_file = 'data/{}_logreg.bin'
-    # meta_catboost_model_file = 'data/{}_meta_catboost.bin'
 
     # ==== Create logger ====
     logger = Logger(logging.getLogger(), logger_fname)
@@ -102,7 +89,6 @@ def main(*kargs, **kwargs):
 
 
     target_labels = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
-    num_classes = len(target_labels)
 
 
 
@@ -143,7 +129,6 @@ def main(*kargs, **kwargs):
                 test_predictions *= minmax_scale(fold_predict)
             if params.get(model_name).get('norm_folds'):
                 test_predictions **= (1. / len(test_predicts_list))
-            # test_predictions **= PROBABILITIES_NORMALIZE_COEFFICIENT
 
             logger.info('Saving prediction...')
             test_ids = test_df["id"].values
