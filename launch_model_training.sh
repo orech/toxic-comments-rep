@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#!/usr/bin/env bash
 PY_PATH="/home/username/tensorflow/bin/python3"
 
 
@@ -10,9 +9,6 @@ EMBEDS_CLEAN="/home/username/toxic-comments-rep/data/embeds.clean.npy"
 TRAIN_LABELS="/home/username/toxic-comments-rep/data/train.labels.npy"
 
 EMBEDS_TYPE="ft_comm_crawl"
-
-SWEAR_FILE="/home/username/toxic-comments-rep/data/swear_words.csv"
-WRONG_WORDS_FILE="/home/username/toxic-comments-rep/data/correct_words.csv"
 
 LOG_FILE="log.train.BiSRU"
 CONFIG="config/config.BiSRU_attention.json"
