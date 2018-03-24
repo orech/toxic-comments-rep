@@ -2,7 +2,7 @@
 This repository contains the code for Kaggle competition https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge
 
 
-This framework contains different models for text classification, which helped us to get into Top 3% on private LB.
+This framework contains different models for text classification, which helped us to get into Top 3%  :hatched_chick: on private LB.
 
 In order to test any of the models, use your own data or take training/test datasets from the competition.
 You can download training and test data from kaggle https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/data and put it into the `data/` folder.
