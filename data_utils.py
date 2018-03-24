@@ -14,16 +14,15 @@ def calc_text_uniq_words(text):
         unique_words.add(word)
     return len(unique_words)
 
-
 # https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/discussion/46371
 def substitute_repeats_fixed_len(text, nchars, ntimes=3):
     return re.sub(r"(\S{{{}}})(\1{{{},}})".format(nchars, ntimes-1), r"\1", text)
+
 
 def substitute_repeats(text, ntimes=3):
     for nchars in range(1, 20):
         text = substitute_repeats_fixed_len(text, nchars, ntimes)
     return text
-
 
 # Split word and digits
 def split_text_and_digits(text, regexps):
@@ -167,6 +166,7 @@ def normalize(s):
         s = s.replace(key, val)
 
     return s
+
 
 def correct_orth(text, fname):
     wrong_word_dict = read_wrong_words(fname)

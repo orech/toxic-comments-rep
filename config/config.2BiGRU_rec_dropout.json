@@ -1,8 +1,8 @@
 {
   "models": [
-    "2BiLSTM_rec_dropout"
+    "2BiGRU_rec_dropout"
   ],
-  "2BiLSTM_rec_dropout": {
+  "2BiGRU_rec_dropout": {
     "optimizer": "nadam",
     "folding": true,
     "num_folds": 5,
@@ -11,7 +11,7 @@
     "recurrent_units": 128,
     "dense_dim": 64,
     "dropout":0.5,
-    "recurrent_dropout" : 0.5,
+    "recurrent_dropout": 0.5,
     "batch_size": 256,
     "norm_folds": true
   }

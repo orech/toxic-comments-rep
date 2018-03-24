@@ -199,10 +199,10 @@ def get_model(model_name, embedding_matrix, params):
                                                 spatial_dropout_rate=params.get(model_name).get('spatial_dropout'))
 
 
-
+    # is still in development
     elif model_name == 'disan':
         get_model_func = lambda: get_diSAN(embedding_matrix=embedding_matrix,
-                                       num_classes=6,
+                                           num_classes=6,
                                            sequence_length=500)
 
     else:
