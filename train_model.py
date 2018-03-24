@@ -187,7 +187,7 @@ def main(*kargs, **kwargs):
             test_predicts = pd.DataFrame(data=test_predictions, columns=target_labels)
             test_predicts["id"] = test_ids
             test_predicts = test_predicts[["id"] + target_labels]
-            submit_path = os.path.join(result_path, "{0}_{1}.submit".format(model_name, embeds_type))
+            submit_path = os.path.join(result_path, "{0}_{1}.csv".format(model_name, embeds_type))
             test_predicts.to_csv(submit_path, index=False)
 
 

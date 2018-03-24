@@ -82,14 +82,6 @@ def main(*kargs, **kwargs):
     if not os.path.exists(result_path):
         os.mkdir(result_path)
 
-    # cnn_model_file = 'data/cnn.h5'
-    # lstm_model_file = 'data/lstm_model.h5'
-    # gru_model_file = 'data/gru_model.h5'
-    # concat_model_file = 'data/concat.h5'
-    # cnn_model_file = 'data/cnn.h5'
-    # lr_model_file = 'data/{}_logreg.bin'
-    # meta_catboost_model_file = 'data/{}_meta_catboost.bin'
-
     # ==== Create logger ====
     logger = Logger(logging.getLogger(), logger_fname)
 
@@ -121,7 +113,7 @@ def main(*kargs, **kwargs):
         logger.debug('Starting {0} training on folds...'.format(model_name))
         models, val_predictions = train_folds_catboost(train_x, train_y, params.get(model_name).get('num_folds'), batch_size, model_func, params.get(model_name).get('optimizer'), logger=logger)
         val_predictions_array = np.concatenate([minmax_scale(fold) for fold in val_predictions], axis=0)
-        np.save(os.path.join(result_path, "oof_{0}_{1].npy".format(model_name, embeds_type)), val_predictions_array)
+        np.save(os.path.join(result_path, "oof_{0}_{1}.npy".format(model_name, embeds_type)), val_predictions_array)
         val_predictions_list.append(val_predictions_array)
         logger.debug('Predicting results...')
         test_predictions = []
@@ -135,17 +127,12 @@ def main(*kargs, **kwargs):
         test_predictions_list.append(final_test_predictions)
 
     x_test = np.concatenate(test_predictions_list, axis=1)
-    #test_predicts_path = os.path.join(result_path, "lgboost_x_test.npy")
-    #np.save(test_predicts_path, x_test)
     x_meta = np.concatenate(val_predictions_list, axis=1)
-    #val_predicts_path = os.path.join(result_path, "lgboost_x_train.npy")
-    #np.save(val_predicts_path, x_meta)
     train_y = train_y[:x_meta.shape[0]]
 
     stacker = lgb.LGBMClassifier(max_depth=3, metric="auc", n_estimators=125, num_leaves=10, boosting_type="gbdt",
                                  learning_rate=0.1, feature_fraction=0.45, colsample_bytree=0.45, bagging_fraction=0.8,
                                  bagging_freq=5, reg_lambda=0.2)
-
     scores = []
     for i, label in enumerate(target_labels):
         print(label)
