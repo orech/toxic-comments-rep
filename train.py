@@ -4,7 +4,7 @@ from math import pow, floor
 from keras import optimizers, callbacks, backend, losses
 from keras.callbacks import EarlyStopping, LearningRateScheduler, Callback
 from sklearn.metrics import log_loss, roc_auc_score, accuracy_score
-from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiLSTM_Attention, get_BiSRU_Attention, get_BiGRU_Dense, get_BiGRU_Max_Avg_Pool_concat, get_2BiGRU_rec_dropout, get_pyramidCNN, get_simpleCNN, get__original_pyramidCNN, get_pyramid_attention_CNN, get_pyramid_gated_CNN, get_2BiSRU_rec_dropout_GlobMaxPool, get_simpleCNN_conv2d, get_diSAN, get_2BiLSTM_rec_dropout, get_2BiSRU_spat_dropout, get_2BiGRU_spat_dropout, get_2BiLSTM_spat_dropout, get_capsuleNet
+from models import get_2BiGRU, get_2BiGRU_BN, get_2BiGRU_GlobMaxPool, get_BiGRU_2dConv_2dMaxPool, get_cnn, get_lstm, get_concat_model, get_tfidf, get_BiGRU_Attention, get_BiLSTM_Attention, get_BiSRU_Attention, get_BiGRU_Dense, get_BiGRU_Max_Avg_Pool_concat, get_2BiGRU_rec_dropout, get_pyramidCNN, get_simpleCNN, get__original_pyramidCNN, get_pyramid_gated_CNN, get_2BiSRU_rec_dropout_GlobMaxPool, get_simpleCNN_conv2d, get_diSAN, get_2BiLSTM_rec_dropout, get_2BiSRU_spat_dropout, get_2BiGRU_spat_dropout, get_2BiLSTM_spat_dropout, get_capsuleNet
 import numpy as np
 
 
@@ -88,16 +88,6 @@ def get_model(model_name, embedding_matrix, params):
                                               num_of_filters=params.get(model_name).get('num_of_filters'),
                                               filter_size=params.get(model_name).get('filter_size'),
                                               num_of_blocks=params.get(model_name).get('num_of_blocks'),
-                                              l2_weight_decay=0.0001)
-    elif model_name == 'pyramid_attention_CNN':
-        get_model_func = lambda: get_pyramid_attention_CNN(embedding_matrix=embedding_matrix,
-                                              num_classes=6,
-                                              sequence_length=params.get(model_name).get('sequence_length'),
-                                              dropout_rate=params.get(model_name).get('dropout_rate'),
-                                              num_of_filters=params.get(model_name).get('num_of_filters'),
-                                              filter_size=params.get(model_name).get('filter_size'),
-                                              num_of_blocks=params.get(model_name).get('num_of_blocks'),
-                                              dense_size=params.get(model_name).get('dense_size'),
                                               l2_weight_decay=0.0001)
     elif model_name == 'simpleCNN':
         get_model_func = lambda: get_simpleCNN(embedding_matrix=embedding_matrix,

@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import os
 
+# Kernel from https://www.kaggle.com/reppic/lazy-ensembling-algorithm
+
 # Controls weights when combining predictions
 # 0: equal average of all inputs;
 # 1: up to 50% of weight going to least correlated input
