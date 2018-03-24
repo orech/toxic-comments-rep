@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Path to tf python location
 PY_PATH="/home/username/tensorflow/bin/python3"
 
 TRAIN_DATA="/home/username/toxic-comments-rep/data/train.csv"

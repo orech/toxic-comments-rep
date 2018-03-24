@@ -76,10 +76,10 @@ def main(*kargs, **kwargs):
     word_dict[UNKNOWN_WORD] = len(word_dict)
 
 
-    # # ==== Load additional data ====
-    # logger.info('Loading additional data...')
-    # swear_words = load_data(swear_words_fname, func=lambda x: set(x.T[0]), header=None)
-    # wrong_words_dict = load_data(wrong_words_fname, func=lambda x: {val[0] : val[1] for val in x})
+    # ==== Load additional data ====
+    logger.info('Loading additional data...')
+    swear_words = load_data(swear_words_fname, func=lambda x: set(x.T[0]), header=None)
+    wrong_words_dict = load_data(wrong_words_fname, func=lambda x: {val[0] : val[1] for val in x})
 
 
     # ==== Load embedding vectors and clean them ====
