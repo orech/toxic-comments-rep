@@ -64,12 +64,15 @@ def main():
     y = np.load('./data/train.labels.npy')[:x_train_wiki.shape[0]]
     sub_crawl_wiki = pd.read_csv('../sample_submission.csv')
     sub_crawl_wiki_glove = pd.read_csv('../sample_submission.csv')
+    sub_crawl_wiki_avg = pd.read_csv('../sample_submission.csv')
+
     print("Models with pretrained wiki fasttext vectors and generated OOV vectors")
 
     x_train_stacked_wiki = np.stack(oof_wiki,axis=-1)
 
     initial_score_wiki = []
     average_oof_predictions_wiki = np.mean(x_train_stacked_wiki, axis=2)
+    average_test_predictions_wiki = np.mean(x_test_wiki, axis=2)
 
     for i in range(len(listdir(wiki_oof_path))):
         score = multi_roc_auc_score(y, x_train_stacked_wiki[:,:,i])
@@ -122,6 +125,7 @@ def main():
 
     initial_score_crawl = []
     averaged_oof_predictions_crawl = np.mean(x_train_stacked_crawl, axis=2)
+    averaged_test_predictions_crawl = np.mean(x_test_crawl, axis=2)
 
     for i in range(len(listdir(crawl_oof_path))):
         print("Model_{0}".format(i))
@@ -226,6 +230,7 @@ def main():
     print("Post-crawl-wiki-glove-blending CV score:", multi_roc_auc_score(y, final_predictions_crawl_wiki_glove))
 
     avg_of_wiki_crawl = (averaged_oof_predictions_crawl + average_oof_predictions_wiki ) / 2
+    sub_crawl_wiki_avg[target_labels] = (averaged_test_predictions_crawl + average_test_predictions_wiki ) / 2
     avg_of_all_models = ( averaged_oof_predictions_crawl + average_oof_predictions_wiki + final_oof_predictions_glove) / 3
 
     print("Simple averaging of all models CV score:", multi_roc_auc_score(y, avg_of_all_models))
@@ -237,6 +242,9 @@ def main():
         os.mkdir(result_path)
     submit_path_crawl_wiki = os.path.join(result_path, "{0}.csv".format('crawl_wiki_blend'))
     sub_crawl_wiki.to_csv(submit_path_crawl_wiki, index=False)
+
+    submit_path_crawl_wiki_avg = os.path.join(result_path, "{0}.csv".format('crawl_wiki_avg'))
+    sub_crawl_wiki_avg.to_csv(submit_path_crawl_wiki_avg, index=False)
 
     submit_path_crawl_wiki_glove = os.path.join(result_path, "{0}.csv".format('crawl_wiki_glove_blend'))
     sub_crawl_wiki_glove.to_csv(submit_path_crawl_wiki_glove, index=False)

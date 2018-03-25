@@ -1,8 +1,22 @@
 # Kaggle Competition: Toxic Comment Classification Challenge
-This repository contains the code for Kaggle competition https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge
+## Table of contents
+
+* [Introduction](#introduction)
+* [Usage](#usage)
+* [Results](#results)
+   * [Single models](#single-models)
+   * [Ensembling methods](#ensembling-methods)
 
 
-This framework contains different models for text classification, which helped us to get into **Top 3%**  :hatched_chick: on private LB.
+## Introduction
+This repository was developed by the team Toxic Random Submission as part of Kaggle Toxic comment classification challenge https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge.
+
+It contains different models for text classification and their ensemblings, which helped us to get into **Top 3%**  :hatched_chick: on private LB.
+
+This framework is based on the open-sourced work of two other competitors:
+ - https://github.com/Donskov7/toxic_comments
+ - https://github.com/PavelOstyakov/toxic
+## Usage
 
 In order to test any of the models, use your own data or take training/test datasets from the competition.
 You can download training and test data from kaggle https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/data and put it into the `data/` folder.
@@ -59,3 +73,32 @@ $PY_PATH train_model.py --test=$TEST_DATA --embeds_type=$EMBEDS_TYPE --train-cle
 ````
 
 The variable `CONFIG` should be assigned with the path to the model config file, which is in `.json` format. In order to change model parameters, modify this config. Configs to existing models are stored in `config/` folder.
+
+
+## Results
+
+### Single model results
+
+Results presented in the table below were achieved with fastext word vectors pre-trained on Common Crawl dataset.
+
+| Architecture            | CV score | Public score | Private score | 
+| :---------------------- | -------- | ------------ |  -----------: |
+| 2bi-lstm with attention | 0.9898   | 0.9867       | 0.9864        |
+| capsule-net with gru    | 0.9891   | 0.9865       | 0.9860        |
+| 2bi-gru with attention  | 0.9896   | 0.9864       | 0.9859        |
+| 2bi-sru with attention  | 0.9901   | 0.9867       | 0.9857        |
+| 2bi-gru with max-pool   | 0.9892   | 0.9861       | 0.9854        |
+| dpcnn                   | 0.9890   | 0.9855       | 0.9844        | 
+| simple cnn              | 0.9889   | 0.9849       | 0.9842        |
+
+### Ensembling 
+Different meta-modelling approaches were investigated to combine single models trained on two types of word embeddings: fasttext Common Crawl and fasttext Wikipedia with generated OOV vectors.
+
+| Model                    | CV score | Public score | Private score | 
+| :----------------------- | -------- | ------------ |  -----------: |
+| weighted arithmetic mean | 0.9920   | 0.9876       | 0.9868        |
+| arithmetic mean          | 0.9919   | 0.9875       | 0.9867        |
+| xgboost                  | 0.9915   | 0.9875       | 0.9868        |
+| LightGBM                 | 0.9915   | 0.9874       | 0.9867        |
+| catboost                 | 0.9917   | 0.9873       | 0.9867        |
+| logistic regression      | 0.9915   | 0.9875       | 0.9863        | 
