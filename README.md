@@ -77,7 +77,7 @@ The variable `CONFIG` should be assigned with the path to the model config file,
 
 ## Results
 
-### Single model results
+### Single models
 
 Results presented in the table below were achieved with fastext word vectors pre-trained on Common Crawl dataset.
 
@@ -91,14 +91,14 @@ Results presented in the table below were achieved with fastext word vectors pre
 | dpcnn                   | 0.9890   | 0.9855       | 0.9844        | 
 | simple cnn              | 0.9889   | 0.9849       | 0.9842        |
 
-### Ensembling 
+### Ensembling methods
 Different meta-modelling approaches were investigated to combine single models trained on two types of word embeddings: fasttext Common Crawl and fasttext Wikipedia with generated OOV vectors.
 
 | Model                    | CV score | Public score | Private score | 
 | :----------------------- | -------- | ------------ |  -----------: |
 | weighted arithmetic mean | 0.9920   | 0.9876       | 0.9868        |
 | arithmetic mean          | 0.9919   | 0.9875       | 0.9867        |
-| xgboost                  | 0.9915   | 0.9875       | 0.9868        |
+| xgboost                  | 0.9915   | 0.9875       | 0.9867        |
 | LightGBM                 | 0.9915   | 0.9874       | 0.9867        |
 | catboost                 | 0.9917   | 0.9873       | 0.9867        |
 | logistic regression      | 0.9915   | 0.9875       | 0.9863        | 
